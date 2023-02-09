@@ -1,6 +1,10 @@
 """This module contains a BigQuery Reservation Hook."""
 from __future__ import annotations
 
+import hashlib
+import re
+import uuid
+
 from time import sleep
 from typing import Dict
 
@@ -20,9 +24,10 @@ from google.cloud.bigquery_reservation_v1 import (
     DeleteCapacityCommitmentRequest,
     DeleteReservationRequest,
     GetReservationRequest,
+    SearchAllAssignmentsRequest,
 )
 
-from google.cloud.bigquery_reservation_v1.types.CapacityCommitment import State
+from google.protobuf import field_mask_pb2
 
 from google.api_core import retry
 from airflow.exceptions import AirflowException
@@ -70,8 +75,32 @@ class BiqQueryReservationServiceHook(GoogleBaseHook):
                 "Commitment slots can only be reserved in increments of 100."
             )
 
+    def generate_resource_name(
+        self,
+        dag_id: str,
+        task_id: str,
+        logical_date: str,
+    ) -> str:
+        """
+        Generate a unique resource name
+
+        :param dag_id: Airflow DAG id
+        :param task_id: Airflow task id
+        :param logical_date: Logical execution date
+        """
+        uniqueness_suffix = hashlib.md5(str(uuid.uuid4()).encode()).hexdigest()[:5]
+        exec_date = logical_date.isoformat()
+        resource_id = f"airflow__{dag_id}_{task_id}__{exec_date}"
+        # Only letters and dashes, maximum 64 characters, not finish by a dash
+        resource_id = re.sub(r"[:\_+.]", "-", resource_id.lower())[:59] + f"-{uniqueness_suffix[:4]}"
+
+        return resource_id
+
     def create_capacity_commitment(
-        self, parent: str, slots: int, commitments_duration: str
+        self,
+        parent: str,
+        slots: int,
+        commitments_duration: str,
     ):
         """
         Create capacity slots commitment.
@@ -158,7 +187,7 @@ class BiqQueryReservationServiceHook(GoogleBaseHook):
             self.log.error(e)
             raise AirflowException(f"Failed to get reservation: {name}.")
 
-    def update_slots_reservation(self, name: str, slots: int):
+    def update_slots_reservation(self, name: str, slots: int)-> None:
         """
         Update slots reservation.
 
@@ -166,11 +195,16 @@ class BiqQueryReservationServiceHook(GoogleBaseHook):
         :param slots: New slots capacity
         """
         client = self.get_client()
+        new_reservation = Reservation(name=name, slot_capacity=slots)
+        field_mask = field_mask_pb2.FieldMask(paths=["slot_capacity"])
 
         try:
             client.update_reservation(
-                request=UpdateReservationRequest(name=name, slotCapacity=slots)
+                reservation=new_reservation,
+                update_mask=field_mask
             )
+            self.reservation = new_reservation
+
         except Exception as e:
             self.log.error(e)
             raise AirflowException(
@@ -203,10 +237,10 @@ class BiqQueryReservationServiceHook(GoogleBaseHook):
 
         try:
             assignment = client.create_assignment(
-                parent=reservation.name,
+                parent=parent,
                 assignment=Assignment(job_type=job_type, assignee=assignee),
             )
-            self.assigment = assigment
+            self.assignment = assignment
 
         except Exception as e:
             self.log.error(e)
@@ -214,7 +248,7 @@ class BiqQueryReservationServiceHook(GoogleBaseHook):
                 "Failed to create slots assignment with assignee {assignee} and job_type {job_type}"
             )
 
-    def search_reservation_assigments(
+    def search_reservation_assignments(
         self, parent: str, project_id: str, job_type: str
     ) -> Assignment:
         """
@@ -226,10 +260,10 @@ class BiqQueryReservationServiceHook(GoogleBaseHook):
         """
         client = self.get_client()
 
-        parent = f"assignee=projects/{project_id}"
+        query = f"assignee=projects/{project_id}"
 
         try:
-            assignments = client.client.search_all_assignments(
+            assignments = client.search_all_assignments(
                 request=SearchAllAssignmentsRequest(parent=parent, query=query)
             )
             # Filter status active and corresponding job_type
@@ -265,16 +299,24 @@ class BiqQueryReservationServiceHook(GoogleBaseHook):
 
     @GoogleBaseHook.fallback_to_default_project_id
     def create_slots_reservation_and_assignment(
-        self, slots: int, job_type: str, project_id: str = PROVIDE_PROJECT_ID
+        self,
+        resource_name: str,
+        slots: int,
+        assignment_job_type: str,
+        commitments_duration: str,
+        project_id: str = PROVIDE_PROJECT_ID,
     ) -> None:
         """
         Create a commitment for a specific amount of slots.
         Attach this commitment to a specified project by creating a new reservation and assignment
         or updating it the existing one.
 
+        :param resource_name: Commitment and reservation name
         :param slots: Slots number to purchase and assign
-        :param job_type: Type of job for assignment
+        :param assignment_job_type: Type of job for assignment
+        :param commitments_duration: Commitment minimum durations (FLEX, MONTH, YEAR).
         :param project_id: The GCP project where you wich to assign slots
+        :param commitments_duration: Commitment minimum durations (FLEX, MONTH, YEAR).
         """
         self._verify_slots_conditions(slots)
         parent = f"projects/{project_id}/locations/{self.location}"
@@ -284,21 +326,22 @@ class BiqQueryReservationServiceHook(GoogleBaseHook):
 
             # We cannot create multiple assignments to the same project on the same job_type.
             # So if it has been already exist we update the reservation only to attribute the slots desired.
-            existing_assignment = self.search_reservation_assigments(
-                parent, project_id, job_type
+            existing_assignment = self.search_reservation_assignments(
+                parent, project_id, assignment_job_type
             )
 
             if existing_assignment:
+                self.assignment = existing_assignment
                 reservation_parent = existing_assignment.name.split("/assignments")[0]
                 current_reservation = self.get_slots_reservation(
-                    parent=reservation_parent
+                    name=reservation_parent
                 )
                 new_slots_reservation = current_reservation.slot_capacity + slots
-                self.update_slots_reservation(name, new_slots_reservation)
+                self.update_slots_reservation(current_reservation.name, new_slots_reservation)
             else:
-                self.create_slots_reservation(parent, reservation_id, slots)
+                self.create_slots_reservation(parent, resource_name, slots)
                 self.create_slots_assignment(
-                    self.reservation.name, project_id, job_type
+                    self.reservation.name, project_id, assignment_job_type
                 )
 
             # Wait 5min. See documentation https://cloud.google.com/bigquery/docs/reservations-assignments#assign-project-to-none
@@ -308,7 +351,7 @@ class BiqQueryReservationServiceHook(GoogleBaseHook):
         except Exception as e:
             self.log.error(e)
             raise AirflowException(
-                f"Failed to purchase {slots} flex BigQuery slots commitments (parent: {parent}, commitment: {commitment.name})."
+                f"Failed to purchase {slots} flex BigQuery slots commitments (parent: {parent})."
             )
 
     @GoogleBaseHook.fallback_to_default_project_id
@@ -338,7 +381,7 @@ class BiqQueryReservationServiceHook(GoogleBaseHook):
             if reservation.capacity_slots > slots:
                 new_slots_reservation = reservation.capacity_slots - slots
                 self.update_slots_reservation(
-                    name=reservation_name, slots=new_slots_reservation
+                    reservation, new_slots_reservation
                 )
             else:
                 self.delete_reservation_assignment(name=assignment_name)
