@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from time import sleep
+from typing import Dict
 
 from airflow.providers.google.common.hooks.base_google import (
     PROVIDE_PROJECT_ID,
@@ -18,7 +19,11 @@ from google.cloud.bigquery_reservation_v1 import (
     DeleteAssignmentRequest,
     DeleteCapacityCommitmentRequest,
     DeleteReservationRequest,
+    GetReservationRequest,
 )
+
+from google.cloud.bigquery_reservation_v1.types.CapacityCommitment import State
+
 from google.api_core import retry
 from airflow.exceptions import AirflowException
 
@@ -127,17 +132,37 @@ class BiqQueryReservationServiceHook(GoogleBaseHook):
                 reservation_id=reservation_id,
                 reservation=Reservation(slot_capacity=slots, ignore_idle_slots=True),
             )
-            self.reservation = reservation.name
+            self.reservation = reservation
 
         except Exception as e:
             self.log.error(e)
             raise AirflowException(f"Failed to create reservation of {slots} slots.")
 
+    def get_slots_reservation(self, name) -> Reservation:
+        """
+        get slots reservation.
+
+        :param name: The resource name e.g. `projects/myproject/locations/US/reservations/test`
+        """
+        client = self.get_client()
+
+        try:
+            reservation = client.get_reservation(
+                GetReservationRequest(
+                    name=name,
+                )
+            )
+            return reservation
+
+        except Exception as e:
+            self.log.error(e)
+            raise AirflowException(f"Failed to get reservation: {name}.")
+
     def update_slots_reservation(self, name: str, slots: int):
         """
         Update slots reservation.
 
-        :param name: reservation name
+        :param name: The reservation name e.g. `projects/myproject/locations/US/reservations/test`
         :param slots: New slots capacity
         """
         client = self.get_client()
@@ -156,7 +181,7 @@ class BiqQueryReservationServiceHook(GoogleBaseHook):
         """
         Delete slots reservation.
 
-        :param name: The reservation name
+        :param name: The reservation name e.g. `projects/myproject/locations/US/reservations/test`
         """
         client = self.get_client()
         try:
@@ -181,7 +206,6 @@ class BiqQueryReservationServiceHook(GoogleBaseHook):
                 parent=reservation.name,
                 assignment=Assignment(job_type=job_type, assignee=assignee),
             )
-            self.assigment = assigment.name
 
         except Exception as e:
             self.log.error(e)
@@ -189,30 +213,43 @@ class BiqQueryReservationServiceHook(GoogleBaseHook):
                 "Failed to create slots assignment with assignee {assignee} and job_type {job_type}"
             )
 
-    def get_reservation_assigments(self, parent: str):
+    def search_reservation_assigments(
+        self, parent: str, project_id: str, job_type: str
+    ) -> Assignment:
         """
         Get reservation assignment
 
-        :param parent: The parent resource name e.g. `projects/myproject/locations/US/reservations/team1-prod`
+        :param name: The parent resource name e.g. `projects/myproject/locations/US`
+        :param project_id: The GCP project where you wich to assign slots
+        :param job_type: Type of job for assignment
         """
         client = self.get_client()
 
+        parent = f"assignee=projects/{project_id}"
+
         try:
-            assignments = client.list_assignments(
-                requests=ListAssignmentsRequest(
-                    parent=parent,
-                )
+            assignments = client.client.search_all_assignments(
+                request=SearchAllAssignmentsRequest(parent=parent, query=query)
             )
-            return assignments
+            # Filter status active and corresponding job_type
+            for assignment in assignments:
+                if (
+                    assignment.state.name == "ACTIVE"
+                    and assignment.job_type.name == job_type
+                ):
+                    return assignment
+            return None
         except Exception as e:
             self.log.error(e)
-            raise AirflowException("Failed to get the list of reservation assignment.")
+            raise AirflowException(
+                "Failed to search the list of reservation assignment."
+            )
 
-    def delete_reservation_assignment(self, name: str):
+    def delete_reservation_assignment(self, name: str) -> None:
         """
         Delete reservation assignment.
 
-        :param name: The assignement name
+        :param name: The assignement name e.g. `projects/myproject/locations/US/reservations/test/assignments/8950226598037373530`
         """
         client = self.get_client()
         try:
@@ -225,11 +262,6 @@ class BiqQueryReservationServiceHook(GoogleBaseHook):
             self.log.error(e)
             raise AirflowException(f"Failed to delete {name} reservation.")
 
-    @staticmethod
-    def _existing_slots(assignments_list, project_id: str, location: str) -> int:
-        # ToDo
-        pass
-
     @GoogleBaseHook.fallback_to_default_project_id
     def create_flex_slots_reservation_and_assignment(
         self, slots: int, job_type: str, project_id: str = PROVIDE_PROJECT_ID
@@ -240,6 +272,8 @@ class BiqQueryReservationServiceHook(GoogleBaseHook):
         or updating it the existing one.
 
         :param slots: Slots number to purchase and assign
+        :param job_type: Type of job for assignment
+        :param project_id: The GCP project where you wich to assign slots
         """
         self._verify_slots_conditions(slots)
         parent = f"projects/{project_id}/locations/{self.location}"
@@ -247,17 +281,24 @@ class BiqQueryReservationServiceHook(GoogleBaseHook):
         try:
             self.create_capacity_commitment(parent, slots, commitments_duration)
 
-            existing_assignments = self.get_reservation_assigments(parent)
-            new_slots_reservation = _existing_slots(
-                existing_assignments, project_id, self.location
+            # We cannot create multiple assignments to the same project on the same job_type.
+            # So if it has been already exist we update the reservation only to attribute the slots desired.
+            existing_assignment = self.search_reservation_assigments(
+                parent, project_id, job_type
             )
 
-            if existing_slots:
-                new_slots_reservation = existing_slots + slots
+            if existing_assignment:
+                reservation_parent = existing_assignment.name.split("/assignments")[0]
+                current_reservation = self.get_slots_reservation(
+                    parent=reservation_parent
+                )
+                new_slots_reservation = current_reservation.slot_capacity + slots
                 self.update_slots_reservation(name, new_slots_reservation)
             else:
                 self.create_slots_reservation(parent, reservation_id, slots)
-                self.create_slots_assignment(parent, project_id, job_type)
+                self.create_slots_assignment(
+                    self.reservation.name, project_id, job_type
+                )
 
             # Wait 5min. See documentation https://cloud.google.com/bigquery/docs/reservations-assignments#assign-project-to-none
             self.log.info(f"Waiting 5 minutes to take into account assignments...")
@@ -269,19 +310,53 @@ class BiqQueryReservationServiceHook(GoogleBaseHook):
                 f"Failed to purchase {slots} flex BigQuery slots commitments (parent: {parent}, commitment: {commitment.name})."
             )
 
-    def create_flex_slots_reservation_and_assignment(self) -> None:
+    @GoogleBaseHook.fallback_to_default_project_id
+    def delete_flex_slots_reservation_and_assignment(
+        self,
+        commitment_name: str,
+        reservation_name: str,
+        assignment_name: str,
+        slots: int,
+    ) -> None:
         """
-        Delete a flex slots reserved
+        Delete a commitment for a specific amount of slots.
+        Attach this commitment to a specified project by creating a new reservation and assignment
+        or updating it the existing one.
+
+        :param commitment_name: The commitment name e.g. `projects/myproject/locations/US/commitments/test`
+        :param reservation_name: The reservation name e.g. `projects/myproject/locations/US/reservations/test`
+        :param assignment_name: The assignment name e.g. `projects/myproject/locations/US/reservations/test/assignments/8950226598037373530`
+        :param slots: Slots number to delete
         """
         try:
+            self._verify_slots_conditions(slots)
 
-            self.log.info(f"BigQuery commitment {self.commitment} has been deleted")
+            reservation = self.get_slots_reservation(name=reservation_name)
+
+            # If reservation have more capacity_slots than requested only update reservation
+            if reservation.capacity_slots > slots:
+                new_slots_reservation = reservation.capacity_slots - slots
+                self.update_slots_reservation(
+                    name=reservation_name, slots=new_slots_reservation
+                )
+            else:
+                self.delete_reservation_assignment(name=assignment_name)
+                self.log.info(
+                    f"BigQuery Assigmnent {self.assignment_name} has been deleted"
+                )
+                self.delete_slots_reservation(name=reservation_name)
+                self.log.info(
+                    f"BigQuery reservation {self.commitment} has been deleted"
+                )
+
+            self.delete_capacity_commitment(name=commitment_name)
+            self.log.info(f"BigQuery commitment {commitment_name} has been deleted")
 
         except Exception as e:
             self.log.error(e)
             raise AirflowException(
                 "Failed to delete flex BigQuery slots("
-                + "assignement: {self.assignement}, "
-                + "reservation: {self.reservation}, "
-                + "commitments: {self.commitment}."
+                + "assignement: {assignation_name}, "
+                + "reservation: {reservation_name}, "
+                + "commitments: {commitment_name}."
             )
