@@ -89,7 +89,7 @@ class BiqQueryReservationServiceHook(GoogleBaseHook):
                     plan=commitments_duration, slot_count=slots
                 ),
             )
-            self.commitment = commitment.name
+            self.commitment = commitment
 
         except Exception as e:
             self.log.error(e)
@@ -206,6 +206,7 @@ class BiqQueryReservationServiceHook(GoogleBaseHook):
                 parent=reservation.name,
                 assignment=Assignment(job_type=job_type, assignee=assignee),
             )
+            self.assigment = assigment
 
         except Exception as e:
             self.log.error(e)
@@ -263,7 +264,7 @@ class BiqQueryReservationServiceHook(GoogleBaseHook):
             raise AirflowException(f"Failed to delete {name} reservation.")
 
     @GoogleBaseHook.fallback_to_default_project_id
-    def create_flex_slots_reservation_and_assignment(
+    def create_slots_reservation_and_assignment(
         self, slots: int, job_type: str, project_id: str = PROVIDE_PROJECT_ID
     ) -> None:
         """
@@ -311,7 +312,7 @@ class BiqQueryReservationServiceHook(GoogleBaseHook):
             )
 
     @GoogleBaseHook.fallback_to_default_project_id
-    def delete_flex_slots_reservation_and_assignment(
+    def delete_slots_reservation_and_assignment(
         self,
         commitment_name: str,
         reservation_name: str,
