@@ -64,7 +64,7 @@ class BiqQueryReservationServiceHook(GoogleBaseHook):
         )
 
     @staticmethod
-    def _verify_slots_conditions(slots):
+    def _verify_slots_conditions(slots: int) -> None:
         """
         Verification of slots conditions acceptations.
 
@@ -82,17 +82,22 @@ class BiqQueryReservationServiceHook(GoogleBaseHook):
         logical_date: str,
     ) -> str:
         """
-        Generate a unique resource name
+        Generate a unique resource name matching google reservation formatting
 
         :param dag_id: Airflow DAG id
         :param task_id: Airflow task id
         :param logical_date: Logical execution date
+
+        :return: a resource name
         """
         uniqueness_suffix = hashlib.md5(str(uuid.uuid4()).encode()).hexdigest()[:5]
         exec_date = logical_date.isoformat()
         resource_id = f"airflow__{dag_id}_{task_id}__{exec_date}"
         # Only letters and dashes, maximum 64 characters, not finish by a dash
-        resource_id = re.sub(r"[:\_+.]", "-", resource_id.lower())[:59] + f"-{uniqueness_suffix[:4]}"
+        resource_id = (
+            re.sub(r"[:\_+.]", "-", resource_id.lower())[:59]
+            + f"-{uniqueness_suffix[:4]}"
+        )
 
         return resource_id
 
@@ -101,7 +106,7 @@ class BiqQueryReservationServiceHook(GoogleBaseHook):
         parent: str,
         slots: int,
         commitments_duration: str,
-    ):
+    ) -> None:
         """
         Create capacity slots commitment.
 
@@ -126,7 +131,7 @@ class BiqQueryReservationServiceHook(GoogleBaseHook):
                 f"Failed to create {slots} slots capacity commitment ({commitments_duration})."
             )
 
-    def delete_capacity_commitment(self, name: str):
+    def delete_capacity_commitment(self, name: str) -> None:
         """
         Delete capacity slots commitment.
 
@@ -136,16 +141,14 @@ class BiqQueryReservationServiceHook(GoogleBaseHook):
 
         try:
             client.delete_capacity_commitment(
-                request=DeleteCapacityCommitmentRequest(
-                    name=name,
-                    retry=retry.Retry(deadline=90, predicate=Exception, maximum=2),
-                )
+                name=name,
+                retry=retry.Retry(deadline=90, predicate=Exception, maximum=2),
             )
         except Exception as e:
             self.log.error(e)
             raise AirflowException(f"Failed to delete {name} capacity commitment.")
 
-    def create_slots_reservation(self, parent: str, reservation_id: str, slots: int):
+    def create_slots_reservation(self, parent: str, reservation_id: str, slots: int) -> None:
         """
         Create slots reservation.
 
@@ -167,11 +170,13 @@ class BiqQueryReservationServiceHook(GoogleBaseHook):
             self.log.error(e)
             raise AirflowException(f"Failed to create reservation of {slots} slots.")
 
-    def get_slots_reservation(self, name) -> Reservation:
+    def get_slots_reservation(self, name: str) -> Reservation:
         """
         get slots reservation.
 
         :param name: The resource name e.g. `projects/myproject/locations/US/reservations/test`
+
+         :return: Corresponding BigQuery Reservation
         """
         client = self.get_client()
 
@@ -187,7 +192,7 @@ class BiqQueryReservationServiceHook(GoogleBaseHook):
             self.log.error(e)
             raise AirflowException(f"Failed to get reservation: {name}.")
 
-    def update_slots_reservation(self, name: str, slots: int)-> None:
+    def update_slots_reservation(self, name: str, slots: int) -> None:
         """
         Update slots reservation.
 
@@ -200,8 +205,7 @@ class BiqQueryReservationServiceHook(GoogleBaseHook):
 
         try:
             client.update_reservation(
-                reservation=new_reservation,
-                update_mask=field_mask
+                reservation=new_reservation, update_mask=field_mask
             )
             self.reservation = new_reservation
 
@@ -211,7 +215,7 @@ class BiqQueryReservationServiceHook(GoogleBaseHook):
                 f"Failed to update {name} reservation (adding {slots} slots)."
             )
 
-    def delete_slots_reservation(self, name: str):
+    def delete_slots_reservation(self, name: str) -> None:
         """
         Delete slots reservation.
 
@@ -224,7 +228,7 @@ class BiqQueryReservationServiceHook(GoogleBaseHook):
             self.log.error(e)
             raise AirflowException(f"Failed to delete {name} reservation.")
 
-    def create_slots_assignment(self, parent: str, project_id: str, job_type: str):
+    def create_slots_assignment(self, parent: str, project_id: str, job_type: str) -> None:
         """
         Create slots assignment.
 
@@ -250,13 +254,15 @@ class BiqQueryReservationServiceHook(GoogleBaseHook):
 
     def search_reservation_assignments(
         self, parent: str, project_id: str, job_type: str
-    ) -> Assignment:
+    ) -> Assignment | None:
         """
         Get reservation assignment
 
         :param name: The parent resource name e.g. `projects/myproject/locations/US`
         :param project_id: The GCP project where you wich to assign slots
         :param job_type: Type of job for assignment
+
+        :return: Corresponding BigQuery assignment
         """
         client = self.get_client()
 
@@ -284,11 +290,12 @@ class BiqQueryReservationServiceHook(GoogleBaseHook):
         """
         Delete reservation assignment.
 
-        :param name: The assignement name e.g. `projects/myproject/locations/US/reservations/test/assignments/8950226598037373530`
+        :param name: The assignement name
+                     e.g. `projects/myproject/locations/US/reservations/test/assignments/8950226598037373530`
         """
         client = self.get_client()
         try:
-            client.delete_assignement(
+            client.delete_assignment(
                 request=DeleteAssignmentRequest(
                     name=name,
                 )
@@ -309,14 +316,13 @@ class BiqQueryReservationServiceHook(GoogleBaseHook):
         """
         Create a commitment for a specific amount of slots.
         Attach this commitment to a specified project by creating a new reservation and assignment
-        or updating it the existing one.
+        or updating the existing one corresponding to the project assignment.
 
         :param resource_name: Commitment and reservation name
         :param slots: Slots number to purchase and assign
         :param assignment_job_type: Type of job for assignment
         :param commitments_duration: Commitment minimum durations (FLEX, MONTH, YEAR).
         :param project_id: The GCP project where you wich to assign slots
-        :param commitments_duration: Commitment minimum durations (FLEX, MONTH, YEAR).
         """
         self._verify_slots_conditions(slots)
         parent = f"projects/{project_id}/locations/{self.location}"
@@ -337,7 +343,9 @@ class BiqQueryReservationServiceHook(GoogleBaseHook):
                     name=reservation_parent
                 )
                 new_slots_reservation = current_reservation.slot_capacity + slots
-                self.update_slots_reservation(current_reservation.name, new_slots_reservation)
+                self.update_slots_reservation(
+                    current_reservation.name, new_slots_reservation
+                )
             else:
                 self.create_slots_reservation(parent, resource_name, slots)
                 self.create_slots_assignment(
@@ -354,18 +362,17 @@ class BiqQueryReservationServiceHook(GoogleBaseHook):
                 f"Failed to purchase {slots} flex BigQuery slots commitments (parent: {parent})."
             )
 
-    @GoogleBaseHook.fallback_to_default_project_id
     def delete_slots_reservation_and_assignment(
         self,
-        commitment_name: str,
-        reservation_name: str,
-        assignment_name: str,
-        slots: int,
+        commitment_name: str | None = None,
+        reservation_name: str | None = None,
+        assignment_name: str | None = None,
+        slots: int | None = None,
     ) -> None:
         """
         Delete a commitment for a specific amount of slots.
-        Attach this commitment to a specified project by creating a new reservation and assignment
-        or updating it the existing one.
+        If the amount of slots deleted is lower than the reservation slots capacity,
+        update the reservation to the corresponding slots otherwise delete reservation and assignment.
 
         :param commitment_name: The commitment name e.g. `projects/myproject/locations/US/commitments/test`
         :param reservation_name: The reservation name e.g. `projects/myproject/locations/US/reservations/test`
@@ -373,29 +380,38 @@ class BiqQueryReservationServiceHook(GoogleBaseHook):
         :param slots: Slots number to delete
         """
         try:
-            self._verify_slots_conditions(slots)
+            if reservation_name:
+                self._verify_slots_conditions(slots)
+                reservation = self.get_slots_reservation(name=reservation_name)
 
-            reservation = self.get_slots_reservation(name=reservation_name)
-
-            # If reservation have more capacity_slots than requested only update reservation
-            if reservation.capacity_slots > slots:
-                new_slots_reservation = reservation.capacity_slots - slots
-                self.update_slots_reservation(
-                    reservation, new_slots_reservation
-                )
+                # If reservation have more capacity_slots than requested only update reservation
+                if reservation.slot_capacity > slots:
+                    new_slots_reservation = reservation.slot_capacity - slots
+                    self.update_slots_reservation(reservation.name, new_slots_reservation)
+                    self.log.info(
+                        f"BigQuery reservation {reservation_name} has been updated" +
+                        f"to {reservation.slot_capacity} -> {new_slots_reservation} slots"
+                    )
+                else:
+                    if assignation_name:
+                        self.delete_reservation_assignment(name=assignment_name)
+                        self.log.info(
+                            f"BigQuery Assigmnent {assignment_name} has been deleted"
+                        )
+                    else:
+                        self.log.info(f"None BigQuery assignment to update or delete")
+                    self.delete_slots_reservation(name=reservation_name)
+                    self.log.info(
+                        f"BigQuery reservation {reservation_name} has been deleted"
+                    )
             else:
-                self.delete_reservation_assignment(name=assignment_name)
-                self.log.info(
-                    f"BigQuery Assigmnent {self.assignment_name} has been deleted"
-                )
-                self.delete_slots_reservation(name=reservation_name)
-                self.log.info(
-                    f"BigQuery reservation {self.commitment} has been deleted"
-                )
+                self.log.info(f"None BigQuery reservation to update or delete")
 
-            self.delete_capacity_commitment(name=commitment_name)
-            self.log.info(f"BigQuery commitment {commitment_name} has been deleted")
-
+            if commitment_name:
+                self.delete_capacity_commitment(name=commitment_name)
+                self.log.info(f"BigQuery commitment {commitment_name} has been deleted")
+            else:
+                self.log.info(f"None BigQuery commitment to delete")
         except Exception as e:
             self.log.error(e)
             raise AirflowException(

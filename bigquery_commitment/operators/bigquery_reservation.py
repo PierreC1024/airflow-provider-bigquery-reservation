@@ -11,7 +11,7 @@ from google.api_core.exceptions import Conflict
 from airflow.exceptions import AirflowException
 
 
-ui_color = "#9c5fff"
+bq_reservation_operator_color = "#9c5fff"
 
 
 class BigQueryCommitmentSlotReservationOperator(BaseOperator):
@@ -56,7 +56,7 @@ class BigQueryCommitmentSlotReservationOperator(BaseOperator):
         "slots_provisioning",
         "commitments_duration",
     )
-    global ui_color
+    ui_color = bq_reservation_operator_color
 
     def __init__(
         self,
@@ -83,7 +83,7 @@ class BigQueryCommitmentSlotReservationOperator(BaseOperator):
         self.cancel_on_kill = cancel_on_kill
         self.hook: BigQueryHook | None = None
 
-    def execute(self, context: Any):
+    def execute(self, context: Any) -> None:
         hook = BiqQueryReservationServiceHook(
             gcp_conn_id=self.gcp_conn_id,
             delegate_to=self.delegate_to,
@@ -108,7 +108,19 @@ class BigQueryCommitmentSlotReservationOperator(BaseOperator):
         context["ti"].xcom_push(key="reservation_name", value=hook.reservation.name)
         context["ti"].xcom_push(key="assignment_name", value=hook.assignment.name)
 
-    # ToDo need to manage deletion on_kill
+     def on_kill(self) -> None:
+        super().on_kill()
+        if self.hook is not None:
+            hook = self.hook
+            commitment_name = commitment.name if commitment else None
+            reservation_name = reservation.name if reservation else None
+            assignment_name = assignment.name if assignment else None
+            delete_slots_reservation_and_assignment(
+                commitment_name=commitment_name,
+                reservation_name=reservation_name,
+                assignation_name=assignation_name,
+                slots=slot_capacity
+            )
 
 
 class BigQueryCommitmentSlotDeletionOperator(BaseOperator):
@@ -150,7 +162,7 @@ class BigQueryCommitmentSlotDeletionOperator(BaseOperator):
         "reservation_name",
         "assignment_name",
     )
-    global ui_color
+    ui_color = bq_reservation_operator_color
 
     def __init__(
         self,
