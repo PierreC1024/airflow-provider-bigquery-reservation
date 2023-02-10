@@ -3,12 +3,12 @@ from setuptools import find_packages, setup
 __version__ = "1.0.0"
 
 setup(
-    name="airflow-provider-bigquery-commitment",
+    name="airflow-provider-bigquery-reservation",
     version=__version__,
-    description="An Apache Airflow provider concerning BigQuery slots commitment.",
+    description="An Apache Airflow provider concerning BigQuery slots reservation.",
     entry_points={
         "apache_airflow_provider": [
-            "provider_info=bigquery_commitment.__init__:get_provider_info"
+            "provider_info=bigquery_reservation.__init__:get_provider_info"
         ]
     },
     license="Apache License 2.0",
