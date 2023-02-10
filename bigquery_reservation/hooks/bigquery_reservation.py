@@ -33,7 +33,7 @@ from google.api_core import retry
 from airflow.exceptions import AirflowException
 
 
-class BiqQueryReservationServiceHook(GoogleBaseHook):
+class BigQueryReservationServiceHook(GoogleBaseHook):
     """
     Hook for Google Bigquery Reservatuin API.
     """
@@ -370,8 +370,9 @@ class BiqQueryReservationServiceHook(GoogleBaseHook):
         slots: int | None = None,
     ) -> None:
         """
-        Delete a commitment for a specific amount of slots.
-        If the amount of slots deleted is lower than the reservation slots capacity,
+        If exist, delete/update the following resources:
+        - a commitment for a specific amount of slots.
+        - If the amount of slots deleted is lower than the reservation slots capacity,
         update the reservation to the corresponding slots otherwise delete reservation and assignment.
 
         :param commitment_name: The commitment name e.g. `projects/myproject/locations/US/commitments/test`

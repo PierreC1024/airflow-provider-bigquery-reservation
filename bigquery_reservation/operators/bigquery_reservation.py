@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, Any, Sequence
 
 from airflow.models import BaseOperator
 from bigquery_commitment.hooks.bigquery_reservation import (
-    BiqQueryReservationServiceHook,
+    BigQueryReservationServiceHook,
 )
 from google.api_core.exceptions import Conflict
 from airflow.exceptions import AirflowException
@@ -84,7 +84,7 @@ class BigQueryCommitmentSlotReservationOperator(BaseOperator):
         self.hook: BigQueryHook | None = None
 
     def execute(self, context: Any) -> None:
-        hook = BiqQueryReservationServiceHook(
+        hook = BigQueryReservationServiceHook(
             gcp_conn_id=self.gcp_conn_id,
             delegate_to=self.delegate_to,
             impersonation_chain=self.impersonation_chain,
@@ -108,7 +108,7 @@ class BigQueryCommitmentSlotReservationOperator(BaseOperator):
         context["ti"].xcom_push(key="reservation_name", value=hook.reservation.name)
         context["ti"].xcom_push(key="assignment_name", value=hook.assignment.name)
 
-     def on_kill(self) -> None:
+    def on_kill(self) -> None:
         super().on_kill()
         if self.hook is not None:
             hook = self.hook
@@ -190,7 +190,7 @@ class BigQueryCommitmentSlotDeletionOperator(BaseOperator):
         self.hook: BigQueryHook | None = None
 
     def execute(self, context: Any):
-        hook = BiqQueryReservationServiceHook(
+        hook = BigQueryReservationServiceHook(
             gcp_conn_id=self.gcp_conn_id,
             delegate_to=self.delegate_to,
             impersonation_chain=self.impersonation_chain,

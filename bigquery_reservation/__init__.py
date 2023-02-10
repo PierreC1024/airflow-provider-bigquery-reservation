@@ -1,6 +1,6 @@
 from importlib.metadata import version
 
-__name__ = "airflow-provider-bigquery-commitment"
+__name__ = "bigquery_reservation"
 __version__ = version(__name__)
 
 def get_provider_info():
@@ -11,12 +11,12 @@ def get_provider_info():
         "connection-types": [
             {
                 "connection-type": "google_cloud_platform",
-                "hook-class-name": "bigquery_commitment.bigquery_reservation.sample.BiqQueryReservationServiceHook",
+                "hook-class-name": "bigquery_reservation.bigquery_reservation.sample.BiqQueryReservationServiceHook",
             }
         ],
         "extra-links": [
-            "bigquery_commitment.operators.bigquery_reservation.BigQueryCommitmentSlotReservationOperator",
-            "bigquery_commitment.operators.bigquery_reservation.BigQueryCommitmentSlotDeletionOperator",
+            "bigquery_reservation.operators.bigquery_reservation.BigQueryCommitmentSlotReservationOperator",
+            "bigquery_reservation.operators.bigquery_reservation.BigQueryCommitmentSlotDeletionOperator",
             ],
         "versions": [__version__],  # Required
     }

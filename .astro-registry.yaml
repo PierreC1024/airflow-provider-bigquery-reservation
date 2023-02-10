@@ -3,14 +3,14 @@
 # repo. The modules listed should pertain to latest, released version of the repo.
 
 # Python package name.
-package-name: airflow-provider-sample
+package-name: airflow-provider-bigquery-reservation
 # The name of the provider to be displayed on the Registry.
-display-name: Airflow Sample Provider
+display-name: Airflow Google BigQuery Reservation Provider
 # A description to be displayed on the main Provider page.
 description: A template repo for building and releasing Apache Airflow provider packages.
 # URL for where user should find the documentation for the Provider. This could be a link to the README,
 # an external docs site, etc.
-docs_url: https://github.com/astronomer/airflow-provider-sample/blob/main/README.md
+docs_url: https://github.com/PierreC1024/airflow-provider-bigquery-commitment/blob/main/README.md
 
 # The next sections should be organized by module type (e.g. operators, hooks, functions, decorators, etc.).
 #
@@ -19,10 +19,8 @@ docs_url: https://github.com/astronomer/airflow-provider-sample/blob/main/README
 # value should be "sample_provider.hooks.sample.SampleHook".
 
 hooks:
-  - module: sample_provider.hooks.sample.SampleHook
+  - module: bigquery_commitment.hooks.bigquery_reservation.BiqQueryReservationServiceHook
 
-operators:
-  - module: sample_provider.operators.sample.SampleOperator
+# operators:
+#   - module: bigquery_commitment.operators.sample.SampleOperator
 
-sensors:
-  - module: sample_provider.sensors.sample.SampleSensor
