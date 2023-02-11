@@ -5,8 +5,8 @@ from pendulum import datetime
 from airflow.decorators import dag
 
 from bigquery_commitment.operators.bigquery_reservation import (
-    BigQueryCommitmentSlotReservationOperator,
-    BigQueryCommitmentSlotDeletionOperator,
+    BigQueryReservationCreateOperator,
+    BigQueryReservationDeletionOperator,
 )
 
 from airflow.providers.google.cloud.operators.bigquery import BigQueryInsertJobOperator
@@ -32,7 +32,7 @@ def sample_workflow():
     3. Delete commitment
     """
 
-    buy_flex_slot_and_assign = BigQueryCommitmentSlotReservationOperator(
+    buy_flex_slot_and_assign = BigQueryReservationCreateOperator(
         task_id="buy_flex_slot_and_assign",
     )
 
@@ -53,7 +53,7 @@ def sample_workflow():
         location=location,
     )
 
-    delete_slots_commitment = BigQueryCommitmentSlotDeletionOperator(
+    delete_slots_commitment = BigQueryReservationDeletionOperator(
         task_id="delete_slots_commitment",
         commitment_name=buy_flex_slot_and_assign.output["commitment_name"],
         reservation_name=buy_flex_slot_and_assign.output["reservation_name"],

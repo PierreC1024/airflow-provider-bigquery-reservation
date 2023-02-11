@@ -15,8 +15,8 @@ def get_provider_info():
             }
         ],
         "extra-links": [
-            "bigquery_reservation.operators.bigquery_reservation.BigQueryCommitmentSlotReservationOperator",
-            "bigquery_reservation.operators.bigquery_reservation.BigQueryCommitmentSlotDeletionOperator",
+            "bigquery_reservation.operators.bigquery_reservation.BigQueryReservationCreateOperator",
+            "bigquery_reservation.operators.bigquery_reservation.BigQueryReservationDeletionOperator",
             ],
         "versions": [__version__],  # Required
     }

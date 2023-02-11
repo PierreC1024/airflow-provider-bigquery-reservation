@@ -14,7 +14,7 @@ from airflow.exceptions import AirflowException
 bq_reservation_operator_color = "#9c5fff"
 
 
-class BigQueryCommitmentSlotReservationOperator(BaseOperator):
+class BigQueryReservationCreateOperator(BaseOperator):
     """
     Buy BigQuery slots and assign them to a GCP project.
     This operator work in the following way:
@@ -91,13 +91,13 @@ class BigQueryCommitmentSlotReservationOperator(BaseOperator):
             location=self.location,
         )
 
-        resource_name = hook.generate_resource_name(
+        resource_name = hook.generate_resource_id(
             dag_id=self.dag_id,
             task_id=self.task_id,
             logical_date=context["logical_date"],
         )
 
-        hook.create_slots_reservation_and_assignment(
+        hook.create_commitment_reservation_and_assignment(
             resource_name=resource_name,
             slots=self.slots_provisioning,
             assignment_job_type=self.assignment_job_type,
@@ -115,7 +115,7 @@ class BigQueryCommitmentSlotReservationOperator(BaseOperator):
             commitment_name = commitment.name if commitment else None
             reservation_name = reservation.name if reservation else None
             assignment_name = assignment.name if assignment else None
-            delete_slots_reservation_and_assignment(
+            delete_commitment_reservation_and_assignment(
                 commitment_name=commitment_name,
                 reservation_name=reservation_name,
                 assignation_name=assignation_name,
@@ -123,7 +123,7 @@ class BigQueryCommitmentSlotReservationOperator(BaseOperator):
             )
 
 
-class BigQueryCommitmentSlotDeletionOperator(BaseOperator):
+class BigQueryReservationDeletionOperator(BaseOperator):
     """
     Delete BigQuery slots and remove associated ressources.
     This operator work in the following way:
@@ -197,7 +197,7 @@ class BigQueryCommitmentSlotDeletionOperator(BaseOperator):
             location=self.location,
         )
 
-        hook.delete_slots_reservation_and_assignment(
+        hook.delete_commitment_reservation_and_assignment(
             commitment_name=self.commitment_name,
             reservation_name=self.reservation_name,
             assignment_name=self.assignment_name,

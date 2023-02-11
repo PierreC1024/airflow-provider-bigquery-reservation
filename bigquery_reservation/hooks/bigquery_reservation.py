@@ -35,7 +35,7 @@ from airflow.exceptions import AirflowException
 
 class BigQueryReservationServiceHook(GoogleBaseHook):
     """
-    Hook for Google Bigquery Reservatuin API.
+    Hook for Google Bigquery Reservation API.
     """
 
     def __init__(
@@ -75,25 +75,28 @@ class BigQueryReservationServiceHook(GoogleBaseHook):
                 "Commitment slots can only be reserved in increments of 100."
             )
 
-    def generate_resource_name(
+    def generate_resource_id(
         self,
         dag_id: str,
         task_id: str,
         logical_date: str,
     ) -> str:
         """
-        Generate a unique resource name matching google reservation formatting
+        Generate a unique resource id matching google reservation formatting:
+            - 64 characters maximum
+            - contains only letters and dashes
+            - begins by a letter
+            - not finish by a dash
 
         :param dag_id: Airflow DAG id
         :param task_id: Airflow task id
         :param logical_date: Logical execution date
 
-        :return: a resource name
+        :return: a resource id
         """
         uniqueness_suffix = hashlib.md5(str(uuid.uuid4()).encode()).hexdigest()[:5]
         exec_date = logical_date.isoformat()
         resource_id = f"airflow__{dag_id}_{task_id}__{exec_date}"
-        # Only letters and dashes, maximum 64 characters, not finish by a dash
         resource_id = (
             re.sub(r"[:\_+.]", "-", resource_id.lower())[:59]
             + f"-{uniqueness_suffix[:4]}"
@@ -148,7 +151,7 @@ class BigQueryReservationServiceHook(GoogleBaseHook):
             self.log.error(e)
             raise AirflowException(f"Failed to delete {name} capacity commitment.")
 
-    def create_slots_reservation(self, parent: str, reservation_id: str, slots: int) -> None:
+    def create_reservation(self, parent: str, reservation_id: str, slots: int) -> None:
         """
         Create slots reservation.
 
@@ -168,9 +171,9 @@ class BigQueryReservationServiceHook(GoogleBaseHook):
 
         except Exception as e:
             self.log.error(e)
-            raise AirflowException(f"Failed to create reservation of {slots} slots.")
+            raise AirflowException(f"Failed to create {slots} slots reservation.")
 
-    def get_slots_reservation(self, name: str) -> Reservation:
+    def get_reservation(self, name: str) -> Reservation:
         """
         get slots reservation.
 
@@ -192,7 +195,7 @@ class BigQueryReservationServiceHook(GoogleBaseHook):
             self.log.error(e)
             raise AirflowException(f"Failed to get reservation: {name}.")
 
-    def update_slots_reservation(self, name: str, slots: int) -> None:
+    def update_reservation(self, name: str, slots: int) -> None:
         """
         Update slots reservation.
 
@@ -212,10 +215,10 @@ class BigQueryReservationServiceHook(GoogleBaseHook):
         except Exception as e:
             self.log.error(e)
             raise AirflowException(
-                f"Failed to update {name} reservation (adding {slots} slots)."
+                f"Failed to update {name} reservation: modification of the slot capacity to {slots} slots."
             )
 
-    def delete_slots_reservation(self, name: str) -> None:
+    def delete_reservation(self, name: str) -> None:
         """
         Delete slots reservation.
 
@@ -228,7 +231,7 @@ class BigQueryReservationServiceHook(GoogleBaseHook):
             self.log.error(e)
             raise AirflowException(f"Failed to delete {name} reservation.")
 
-    def create_slots_assignment(self, parent: str, project_id: str, job_type: str) -> None:
+    def create_assignment(self, parent: str, project_id: str, job_type: str) -> None:
         """
         Create slots assignment.
 
@@ -252,11 +255,14 @@ class BigQueryReservationServiceHook(GoogleBaseHook):
                 "Failed to create slots assignment with assignee {assignee} and job_type {job_type}"
             )
 
-    def search_reservation_assignments(
+    def search_assignment(
         self, parent: str, project_id: str, job_type: str
     ) -> Assignment | None:
         """
-        Get reservation assignment
+        Search the reservation assignment which matches with the conditions:
+            - Assignee to the specified project_id
+            - active state
+            - the job type corresponding to the job type specified
 
         :param name: The parent resource name e.g. `projects/myproject/locations/US`
         :param project_id: The GCP project where you wich to assign slots
@@ -286,7 +292,7 @@ class BigQueryReservationServiceHook(GoogleBaseHook):
                 "Failed to search the list of reservation assignment."
             )
 
-    def delete_reservation_assignment(self, name: str) -> None:
+    def delete_assignment(self, name: str) -> None:
         """
         Delete reservation assignment.
 
@@ -305,7 +311,7 @@ class BigQueryReservationServiceHook(GoogleBaseHook):
             raise AirflowException(f"Failed to delete {name} reservation.")
 
     @GoogleBaseHook.fallback_to_default_project_id
-    def create_slots_reservation_and_assignment(
+    def create_commitment_reservation_and_assignment(
         self,
         resource_name: str,
         slots: int,
@@ -332,23 +338,23 @@ class BigQueryReservationServiceHook(GoogleBaseHook):
 
             # We cannot create multiple assignments to the same project on the same job_type.
             # So if it has been already exist we update the reservation only to attribute the slots desired.
-            existing_assignment = self.search_reservation_assignments(
+            existing_assignment = self.search_assignment(
                 parent, project_id, assignment_job_type
             )
 
             if existing_assignment:
                 self.assignment = existing_assignment
                 reservation_parent = existing_assignment.name.split("/assignments")[0]
-                current_reservation = self.get_slots_reservation(
+                current_reservation = self.get_reservation(
                     name=reservation_parent
                 )
                 new_slots_reservation = current_reservation.slot_capacity + slots
-                self.update_slots_reservation(
+                self.update_reservation(
                     current_reservation.name, new_slots_reservation
                 )
             else:
-                self.create_slots_reservation(parent, resource_name, slots)
-                self.create_slots_assignment(
+                self.create_reservation(parent, resource_name, slots)
+                self.create_assignment(
                     self.reservation.name, project_id, assignment_job_type
                 )
 
@@ -362,7 +368,7 @@ class BigQueryReservationServiceHook(GoogleBaseHook):
                 f"Failed to purchase {slots} flex BigQuery slots commitments (parent: {parent})."
             )
 
-    def delete_slots_reservation_and_assignment(
+    def delete_commitment_reservation_and_assignment(
         self,
         commitment_name: str | None = None,
         reservation_name: str | None = None,
@@ -370,7 +376,7 @@ class BigQueryReservationServiceHook(GoogleBaseHook):
         slots: int | None = None,
     ) -> None:
         """
-        If exist, delete/update the following resources:
+        If it exists, delete/update the following resources:
         - a commitment for a specific amount of slots.
         - If the amount of slots deleted is lower than the reservation slots capacity,
         update the reservation to the corresponding slots otherwise delete reservation and assignment.
@@ -383,25 +389,25 @@ class BigQueryReservationServiceHook(GoogleBaseHook):
         try:
             if reservation_name:
                 self._verify_slots_conditions(slots)
-                reservation = self.get_slots_reservation(name=reservation_name)
+                reservation = self.get_reservation(name=reservation_name)
 
                 # If reservation have more capacity_slots than requested only update reservation
                 if reservation.slot_capacity > slots:
                     new_slots_reservation = reservation.slot_capacity - slots
-                    self.update_slots_reservation(reservation.name, new_slots_reservation)
+                    self.update_reservation(reservation.name, new_slots_reservation)
                     self.log.info(
                         f"BigQuery reservation {reservation_name} has been updated" +
                         f"to {reservation.slot_capacity} -> {new_slots_reservation} slots"
                     )
                 else:
                     if assignation_name:
-                        self.delete_reservation_assignment(name=assignment_name)
+                        self.delete_assignment(name=assignment_name)
                         self.log.info(
                             f"BigQuery Assigmnent {assignment_name} has been deleted"
                         )
                     else:
                         self.log.info(f"None BigQuery assignment to update or delete")
-                    self.delete_slots_reservation(name=reservation_name)
+                    self.delete_reservation(name=reservation_name)
                     self.log.info(
                         f"BigQuery reservation {reservation_name} has been deleted"
                     )
