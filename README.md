@@ -11,6 +11,8 @@
 </h1>
 <br/>
 
+[![PyPI version](https://badge.fury.io/py/airflow-provider-bigquery-reservation.svg)](https://badge.fury.io/py/airflow-provider-bigquery-reservation)
+
 This repository provides an Airflow provider based on BigQuery reservation API.
 
 Operators available:
