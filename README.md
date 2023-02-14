@@ -24,5 +24,5 @@ You could find DAG sample [here](https://github.com/PierreC1024/airflow-provider
 ## How to install
 
 ```bash
-pip install --user git+https://github.com/PierreC1024/airflow-provider-bigquery-reservation
+pip install --user airflow-provider-bigquery-reservation
 ```
