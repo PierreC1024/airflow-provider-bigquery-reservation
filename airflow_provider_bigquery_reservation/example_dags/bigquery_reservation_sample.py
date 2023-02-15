@@ -8,7 +8,7 @@ from airflow.providers.google.cloud.operators.bigquery import BigQueryInsertJobO
 
 from airflow_provider_bigquery_reservation.operators.bigquery_reservation import (
     BigQueryReservationCreateOperator,
-    BigQueryReservationDeletionOperator,
+    BigQueryReservationDeleteOperator,
 )
 
 
@@ -53,7 +53,7 @@ def bigquery_reservation_sample():
         location=location,
     )
 
-    delete_reservation = BigQueryReservationDeletionOperator(
+    delete_reservation = BigQueryReservationDeleteOperator(
         task_id="delete_reservation",
         commitment_name=create_reservation.output["commitment_name"],
         reservation_name=create_reservation.output["reservation_name"],
