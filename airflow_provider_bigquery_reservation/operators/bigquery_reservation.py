@@ -104,6 +104,7 @@ class BigQueryReservationCreateOperator(BaseOperator):
             slots=self.slots_provisioning,
             assignment_job_type=self.assignment_job_type,
             commitments_duration=self.commitments_duration,
+            project_id=self.project_id,
         )
 
         context["ti"].xcom_push(key="commitment_name", value=hook.commitment.name)
