@@ -132,6 +132,8 @@ class BigQueryReservationServiceHook(GoogleBaseHook):
         """
         client = self.get_client()
 
+        self.log.info(f"DEBUG create_capacity_commitment: The parent defined is {parent}")
+
         try:
             commitment = client.create_capacity_commitment(
                 parent=parent,
@@ -392,6 +394,9 @@ class BigQueryReservationServiceHook(GoogleBaseHook):
         """
         self._verify_slots_conditions(slots=slots)
         parent = f"projects/{project_id}/locations/{self.location}"
+
+        self.log.info(f"DEBUG: The project_id defined is {project_id}")
+        self.log.info(f"DEBUG: The parent defined is {parent}")
 
         try:
             self.create_capacity_commitment(
