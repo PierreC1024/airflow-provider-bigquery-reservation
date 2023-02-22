@@ -1,6 +1,6 @@
 from setuptools import find_packages, setup
 
-__version__ = "0.0.1"
+__version__ = "0.0.2"
 
 setup(
     name="airflow-provider-bigquery-reservation",
@@ -21,7 +21,7 @@ setup(
     author="Pierre Cardona",
     author_email="pierre@data-fullstack.com",
     url="https://github.com/PierreC1024/airflow-provider-bigquery-reservation",
-    download_url="https://github.com/PierreC1024/airflow-provider-bigquery-reservation/archive/refs/tags/0.0.1.tar.gz",
+    download_url="https://github.com/PierreC1024/airflow-provider-bigquery-reservation/archive/refs/tags/0.0.2.tar.gz",
     classifiers=[
         "Framework :: Apache Airflow",
         "Framework :: Apache Airflow :: Provider",
