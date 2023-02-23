@@ -61,6 +61,9 @@ class BigQueryReservationServiceHook(GoogleBaseHook):
         )
         self.location = location
         self.running_job_id: str | None = None
+        self.commitment: CapacityCommitment | None = None
+        self.reservation: Reservation | None = None
+        self.assignment: Assignment | None = None
 
     def get_client(self) -> ReservationServiceClient:
         """
@@ -476,6 +479,12 @@ class BigQueryReservationServiceHook(GoogleBaseHook):
 
         except Exception as e:
             self.log.error(e)
+            self.delete_commitment_reservation_and_assignment(
+                commitment_name=self.commitment.name,
+                reservation_name=self.reservation.name,
+                assignment_name=self.assignment.name,
+                slots=slots,
+            )
             raise AirflowException(
                 f"Failed to purchase, to reserve and to attribute {slots} {commitments_duration} BigQuery slots commitments."
             )
