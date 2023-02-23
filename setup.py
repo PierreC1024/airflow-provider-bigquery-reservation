@@ -16,6 +16,7 @@ setup(
     install_requires=[
         "apache-airflow>=2.5.0",
         "google-cloud-bigquery-reservation==1.8.0",
+        "google-cloud-bigquery==3.4.0",
     ],
     setup_requires=["setuptools", "wheel"],
     author="Pierre Cardona",
@@ -27,5 +28,5 @@ setup(
         "Framework :: Apache Airflow :: Provider",
     ],
     python_requires="~=3.8",
-    keywords = ["airflow", "bigquery"],
+    keywords=["airflow", "bigquery"],
 )
