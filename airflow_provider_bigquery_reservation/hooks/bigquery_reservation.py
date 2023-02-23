@@ -30,6 +30,9 @@ from google.cloud.bigquery_reservation_v1 import (
     GetBiReservationRequest,
 )
 
+from google.cloud import bigquery
+
+
 from google.protobuf import field_mask_pb2
 from google.api_core import retry
 
@@ -58,6 +61,9 @@ class BigQueryReservationServiceHook(GoogleBaseHook):
         )
         self.location = location
         self.running_job_id: str | None = None
+        self.commitment: CapacityCommitment | None = None
+        self.reservation: Reservation | None = None
+        self.assignment: Assignment | None = None
 
     def get_client(self) -> ReservationServiceClient:
         """
@@ -370,6 +376,44 @@ class BigQueryReservationServiceHook(GoogleBaseHook):
             self.log.error(e)
             raise AirflowException(f"Failed to delete BI engine reservation of {size}.")
 
+    def get_bq_client(self) -> bigquery.Client:
+        """
+        Get BQ service client.
+
+        :return: Google Bigquery client
+        """
+        return bigquery.Client(
+            credentials=self.get_credentials(), client_info=CLIENT_INFO
+        )
+
+    def _is_assignment_attached_in_query(
+        self, client: bigquery.Client, project_id: str, location: str
+    ) -> bool:
+        """
+        Check if assignment has been attached from a dummy query.
+
+        :param client: BigQuery Client
+        :param project_id: GCP project
+        :param location: BigQuery project
+        :return: bool
+        """
+
+        dummy_query = """
+            SELECT dummy
+            FROM UNNEST([STRUCT(true as dummy)])
+        """
+        query_job = client.query(
+            dummy_query,
+            project=project_id,
+            location=location,
+            job_id_prefix="test_assignment_reservation",
+            job_config=bigquery.QueryJobConfig(use_query_cache=False),
+        )
+        if query_job._properties["statistics"].get("reservation_id"):
+            return True
+        else:
+            return False
+
     @GoogleBaseHook.fallback_to_default_project_id
     def create_commitment_reservation_and_assignment(
         self,
@@ -383,6 +427,8 @@ class BigQueryReservationServiceHook(GoogleBaseHook):
         Create a commitment for a specific amount of slots.
         Attach this commitment to a specified project by creating a new reservation and assignment
         or updating the existing one corresponding to the project assignment.
+        Wait the assignment has been attached to a query.
+        See https://cloud.google.com/bigquery/docs/reservations-assignments
 
         :param resource_id: Resource id
         :param slots: Slots number to purchase and assign
@@ -422,12 +468,23 @@ class BigQueryReservationServiceHook(GoogleBaseHook):
                     job_type=assignment_job_type,
                 )
 
-            # Wait 5min. See documentation https://cloud.google.com/bigquery/docs/reservations-assignments#assign-project-to-none
-            self.log.info(f"Waiting 5 minutes to take into account assignments...")
-            sleep(300)
+                # Waiting the assignment attachment to send a dummy query every 15 seconds
+                self.log.info(f"Waiting assignments attachment")
+
+                bq_client = self.get_bq_client()
+                while not self._is_assignment_attached_in_query(
+                    client=bq_client, project_id=project_id, location=self.location
+                ):
+                    sleep(15)
 
         except Exception as e:
             self.log.error(e)
+            self.delete_commitment_reservation_and_assignment(
+                commitment_name=self.commitment.name,
+                reservation_name=self.reservation.name,
+                assignment_name=self.assignment.name,
+                slots=slots,
+            )
             raise AirflowException(
                 f"Failed to purchase, to reserve and to attribute {slots} {commitments_duration} BigQuery slots commitments."
             )
