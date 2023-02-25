@@ -7,6 +7,7 @@ import uuid
 
 from time import sleep
 from typing import Dict
+import datetime
 
 from airflow.providers.google.common.hooks.base_google import (
     PROVIDE_PROJECT_ID,
@@ -71,9 +72,13 @@ class BigQueryReservationServiceHook(GoogleBaseHook):
 
         :return: Google Bigquery Reservation client
         """
-        return ReservationServiceClient(
-            credentials=self.get_credentials(), client_info=CLIENT_INFO
-        )
+        if not self._client:
+            self._client = ReservationServiceClient(
+                credentials=self.get_credentials(), client_info=CLIENT_INFO
+            )
+            return self._client
+        else:
+            return self._client
 
     @staticmethod
     def _verify_slots_conditions(slots: int) -> None:
@@ -98,7 +103,7 @@ class BigQueryReservationServiceHook(GoogleBaseHook):
         self,
         dag_id: str,
         task_id: str,
-        logical_date: str,
+        logical_date: datetime.datetime,
     ) -> str:
         """
         Generate a unique resource id matching google reservation requirements:
@@ -475,7 +480,7 @@ class BigQueryReservationServiceHook(GoogleBaseHook):
                 while not self._is_assignment_attached_in_query(
                     client=bq_client, project_id=project_id, location=self.location
                 ):
-                    sleep(15)
+                    sleep(15) # pragma: no cover
 
         except Exception as e:
             self.log.error(e)
@@ -529,19 +534,19 @@ class BigQueryReservationServiceHook(GoogleBaseHook):
                             f"BigQuery Assigmnent {assignment_name} has been deleted"
                         )
                     else:
-                        self.log.info(f"None BigQuery assignment to update or delete")
+                        self.log.warning("None BigQuery assignment to update or delete")
                     self.delete_reservation(name=reservation_name)
                     self.log.info(
                         f"BigQuery reservation {reservation_name} has been deleted"
                     )
             else:
-                self.log.info(f"None BigQuery reservation to update or delete")
+                self.log.warning("None BigQuery reservation to update or delete")
 
             if commitment_name:
                 self.delete_capacity_commitment(name=commitment_name)
                 self.log.info(f"BigQuery commitment {commitment_name} has been deleted")
             else:
-                self.log.info(f"None BigQuery commitment to delete")
+                self.log.warning("None BigQuery commitment to delete")
         except Exception as e:
             self.log.error(e)
             raise AirflowException(

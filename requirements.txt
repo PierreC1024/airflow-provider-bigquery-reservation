@@ -1,4 +1,5 @@
-apache-airflow>=2.5.0
+apache-airflow>=2.3.0
 google-cloud-bigquery-reservation==1.8.0
-protobuf<=3.19.5
+apache-airflow-providers-google
+protobuf==3.19.5
 google-cloud-bigquery==3.4.0
