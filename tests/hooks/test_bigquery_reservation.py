@@ -79,8 +79,8 @@ class TestBigQueryReservationHook:
     @mock.patch("google.cloud.bigquery_reservation_v1.ReservationServiceClient")
     def test_get_client_already_exist(self, reservation_client_mock):
         expected = reservation_client_mock(
-                credentials=self.hook.get_credentials(), client_info=CLIENT_INFO
-            )
+            credentials=self.hook.get_credentials(), client_info=CLIENT_INFO
+        )
         self.hook._client = expected
         assert self.hook.get_client() == expected
 
@@ -96,14 +96,19 @@ class TestBigQueryReservationHook:
         value = random.randint(1, 1000)
         assert self.hook._convert_gb_to_kb(value) == value * 1073741824
 
-    @mock.patch.object(uuid, "uuid4", return_value="e39dfcb7-dc5f-498d-8a89-5a871e9c4363")
+    @mock.patch.object(
+        uuid, "uuid4", return_value="e39dfcb7-dc5f-498d-8a89-5a871e9c4363"
+    )
     def test_generate_resource_id(self, uuid_mock):
         expected = f"airflow--{DAG_ID}-{TASK_ID}--2023-01-01t00-00-00-3bfe"
-        assert self.hook.generate_resource_id(
-            DAG_ID,
-            TASK_ID,
-            LOGICAL_DATE,
-        ) ==  expected
+        assert (
+            self.hook.generate_resource_id(
+                DAG_ID,
+                TASK_ID,
+                LOGICAL_DATE,
+            )
+            == expected
+        )
 
     # Create Capacity Commitment
     @mock.patch(
@@ -137,9 +142,7 @@ class TestBigQueryReservationHook:
         "google.api_core.retry.Retry",
     )
     def test_delete_capacity_commitment_success(self, retry_mock, client_mock):
-        result = self.hook.delete_capacity_commitment(
-            RESOURCE_NAME
-        )
+        result = self.hook.delete_capacity_commitment(RESOURCE_NAME)
         client_mock.return_value.delete_capacity_commitment.assert_called_once_with(
             name=RESOURCE_NAME,
             retry=retry_mock(),
@@ -369,7 +372,9 @@ class TestBigQueryReservationHook:
         """
         job_config = bigquery.QueryJobConfig(use_query_cache=False)
         rslt = self.hook._is_assignment_attached_in_query(
-            bq_client, PROJECT_ID, LOCATION,
+            bq_client,
+            PROJECT_ID,
+            LOCATION,
         )
         bq_client.query.assert_called_with(
             dummy_query,
@@ -392,7 +397,9 @@ class TestBigQueryReservationHook:
         """
         job_config = bigquery.QueryJobConfig(use_query_cache=False)
         rslt = self.hook._is_assignment_attached_in_query(
-            bq_client, PROJECT_ID, LOCATION,
+            bq_client,
+            PROJECT_ID,
+            LOCATION,
         )
         bq_client.query.assert_called_with(
             dummy_query,

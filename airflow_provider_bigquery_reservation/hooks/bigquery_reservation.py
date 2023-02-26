@@ -480,7 +480,7 @@ class BigQueryReservationServiceHook(GoogleBaseHook):
                 while not self._is_assignment_attached_in_query(
                     client=bq_client, project_id=project_id, location=self.location
                 ):
-                    sleep(15) # pragma: no cover
+                    sleep(15)  # pragma: no cover
 
         except Exception as e:
             self.log.error(e)

@@ -22,4 +22,4 @@ def get_provider_info():
             "airflow_provider_bigquery_reservation.operators.bigquery_reservation.BigQueryBiEngineReservationDeleteOperator",
         ],
         "versions": [__version__],
-    } # pragma: no cover
+    }  # pragma: no cover
