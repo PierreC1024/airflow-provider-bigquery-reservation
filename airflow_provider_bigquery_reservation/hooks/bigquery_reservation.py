@@ -65,6 +65,7 @@ class BigQueryReservationServiceHook(GoogleBaseHook):
         self.commitment: CapacityCommitment | None = None
         self.reservation: Reservation | None = None
         self.assignment: Assignment | None = None
+        self._client: ReservationServiceClient | None = None
 
     def get_client(self) -> ReservationServiceClient:
         """

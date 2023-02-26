@@ -53,20 +53,15 @@ DAG_ID = "dag"
 TASK_ID = "task"
 LOGICAL_DATE = datetime.datetime.strptime("2023-01-01", "%Y-%m-%d")
 
-# DEFAULT_RETRY = retry.Retry(deadline=90, predicate=Exception, maximum=2)
-
 
 @pytest.fixture()
 def logger():
     logger = logging.getLogger(__name__)
-    logger.setLevel(logging.INFO)
+    logger.setLevel(logging.WARN)
     return logger
 
 
 class TestBigQueryReservationHook:
-    def default_exception():
-        raise Exception("Test")
-
     def setup_method(self):
         with mock.patch(
             "airflow_provider_bigquery_reservation.hooks.bigquery_reservation.GoogleBaseHook.__init__",
