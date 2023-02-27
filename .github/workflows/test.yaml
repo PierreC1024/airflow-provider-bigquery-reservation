@@ -1,4 +1,4 @@
-name: Lint_Test
+name: Pytest
 on: push
 
 jobs:
