@@ -51,27 +51,31 @@ class TestBigQueryReservationCreateOperator:
     @mock.patch.object(
         BigQueryReservationServiceHook, "create_commitment_reservation_and_assignment"
     )
+    @mock.patch.object(
+        BigQueryReservationServiceHook, "get_commitment", return_value=COMMITMENT
+    )
+    @mock.patch.object(
+        BigQueryReservationServiceHook, "get_reservation", return_value=RESERVATION
+    )
+    @mock.patch.object(
+        BigQueryReservationServiceHook, "get_assignment", return_value=ASSIGNMENT
+    )
     @mock.patch(
         "airflow_provider_bigquery_reservation.hooks.bigquery_reservation.BigQueryReservationServiceHook"
     )
+
     def test_execute(
         self,
         hook_mock,
+        assignment_mock,
+        reservation_mock,
+        commitment_mock,
         create_commitment_reservation_and_assignment_mock,
         generate_resource_id_mock,
         get_conn_mock,
     ):
-
-        hook_mock.commitment = COMMITMENT
-        hook_mock.reservation = RESERVATION
-        hook_mock.assignment = ASSIGNMENT
-
-        operator = self.operator
-        operator.hook = hook_mock
-
         ti = mock.MagicMock()
-
-        operator.execute({"ti": ti, "logical_date": LOGICAL_DATE})
+        self.operator.execute({"ti": ti, "logical_date": LOGICAL_DATE})
 
         generate_resource_id_mock.assert_called_once_with(
             dag_id=DAG,

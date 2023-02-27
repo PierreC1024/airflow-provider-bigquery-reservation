@@ -1,6 +1,6 @@
 from importlib.metadata import version
 
-__name__ = "airflow-provider-bigquery-reservation"
+__name__ = "airflow_provider_bigquery_reservation"
 __version__ = version(__name__)
 
 

@@ -83,23 +83,24 @@ class BigQueryReservationCreateOperator(BaseOperator):
         self.delegate_to = delegate_to
         self.impersonation_chain = impersonation_chain
         self.cancel_on_kill = cancel_on_kill
-        self.hook: BigQueryHook | None = None
+        self.hook: BigQueryReservationServiceHook | None = None
 
     def execute(self, context: Any) -> None:
-        hook = BigQueryReservationServiceHook(
+        self.hook = BigQueryReservationServiceHook(
             gcp_conn_id=self.gcp_conn_id,
             delegate_to=self.delegate_to,
             impersonation_chain=self.impersonation_chain,
             location=self.location,
         )
 
-        resource_id = hook.generate_resource_id(
+
+        resource_id = self.hook.generate_resource_id(
             dag_id=self.dag_id,
             task_id=self.task_id,
             logical_date=context["logical_date"],
         )
 
-        hook.create_commitment_reservation_and_assignment(
+        self.hook.create_commitment_reservation_and_assignment(
             resource_id=resource_id,
             slots=self.slots_provisioning,
             assignment_job_type=self.assignment_job_type,
@@ -107,21 +108,29 @@ class BigQueryReservationCreateOperator(BaseOperator):
             project_id=self.project_id,
         )
 
-        context["ti"].xcom_push(key="commitment_name", value=hook.commitment.name)
-        context["ti"].xcom_push(key="reservation_name", value=hook.reservation.name)
-        context["ti"].xcom_push(key="assignment_name", value=hook.assignment.name)
+        context["ti"].xcom_push(key="commitment_name", value=self.hook.get_commitment().name)
+        context["ti"].xcom_push(
+            key="reservation_name", value=self.hook.get_reservation().name
+        )
+        context["ti"].xcom_push(key="assignment_name", value=self.hook.get_assignment().name)
 
     def on_kill(self) -> None:
         super().on_kill()
         if self.hook is not None:
-            commitment_name = commitment.name if self.hook.commitment else None
-            reservation_name = reservation.name if self.hook.reservation else None
-            assignment_name = assignment.name if self.hook.assignment else None
-            delete_commitment_reservation_and_assignment(
+            commitment_name = (
+                self.hook.commitment.name if self.hook.commitment else None
+            )
+            reservation_name = (
+                self.hook.reservation.name if self.hook.reservation else None
+            )
+            assignment_name = (
+                self.hook.assignment.name if self.hook.assignment else None
+            )
+            self.hook.delete_commitment_reservation_and_assignment(
                 commitment_name=commitment_name,
                 reservation_name=reservation_name,
                 assignment_name=assignment_name,
-                slots=slot_capacity,
+                slots=self.slots_provisioning,
             )
 
 
