@@ -63,7 +63,6 @@ class TestBigQueryReservationCreateOperator:
     @mock.patch(
         "airflow_provider_bigquery_reservation.hooks.bigquery_reservation.BigQueryReservationServiceHook"
     )
-
     def test_execute(
         self,
         hook_mock,

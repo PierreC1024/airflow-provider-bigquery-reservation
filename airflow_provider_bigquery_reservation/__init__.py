@@ -1,12 +1,9 @@
 from importlib.metadata import version
 
-__name__ = "airflow_provider_bigquery_reservation"
-__version__ = version(__name__)
-
 
 def get_provider_info():
     return {
-        "package-name": __name__,
+        "package-name": "airflow_provider_bigquery_reservation",
         "name": "Apache Airflow BigQuery Reservation Provider",
         "description": "Airflow Provider to buy reservation in BigQuery",
         "connection-types": [
@@ -21,5 +18,5 @@ def get_provider_info():
             "airflow_provider_bigquery_reservation.operators.bigquery_reservation.BigQueryBiEngineReservationCreateOperator",
             "airflow_provider_bigquery_reservation.operators.bigquery_reservation.BigQueryBiEngineReservationDeleteOperator",
         ],
-        "versions": [__version__],
+        "versions": [version("airflow_provider_bigquery_reservation")],
     }  # pragma: no cover

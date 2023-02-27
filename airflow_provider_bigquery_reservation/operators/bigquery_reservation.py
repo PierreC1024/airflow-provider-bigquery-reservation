@@ -93,7 +93,6 @@ class BigQueryReservationCreateOperator(BaseOperator):
             location=self.location,
         )
 
-
         resource_id = self.hook.generate_resource_id(
             dag_id=self.dag_id,
             task_id=self.task_id,
@@ -108,11 +107,15 @@ class BigQueryReservationCreateOperator(BaseOperator):
             project_id=self.project_id,
         )
 
-        context["ti"].xcom_push(key="commitment_name", value=self.hook.get_commitment().name)
+        context["ti"].xcom_push(
+            key="commitment_name", value=self.hook.get_commitment().name
+        )
         context["ti"].xcom_push(
             key="reservation_name", value=self.hook.get_reservation().name
         )
-        context["ti"].xcom_push(key="assignment_name", value=self.hook.get_assignment().name)
+        context["ti"].xcom_push(
+            key="assignment_name", value=self.hook.get_assignment().name
+        )
 
     def on_kill(self) -> None:
         super().on_kill()

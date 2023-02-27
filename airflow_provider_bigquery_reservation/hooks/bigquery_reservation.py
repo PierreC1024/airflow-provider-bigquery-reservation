@@ -68,13 +68,13 @@ class BigQueryReservationServiceHook(GoogleBaseHook):
         self._client: ReservationServiceClient | None = None
 
     def get_commitment(self):
-        return self.commitment # pragma: no cover
+        return self.commitment  # pragma: no cover
 
     def get_reservation(self):
-        return self.reservation # pragma: no cover
+        return self.reservation  # pragma: no cover
 
     def get_assignment(self):
-        return self.assignment # pragma: no cover
+        return self.assignment  # pragma: no cover
 
     def get_client(self) -> ReservationServiceClient:
         """
