@@ -12,6 +12,7 @@
 <br/>
 
 [![PyPI version](https://badge.fury.io/py/airflow-provider-bigquery-reservation.svg)](https://badge.fury.io/py/airflow-provider-bigquery-reservation)
+[![codecov](https://codecov.io/gh/PierreC1024/airflow-provider-bigquery-reservation/branch/main/graph/badge.svg?token=VQ18VBAGNO)](https://codecov.io/gh/PierreC1024/airflow-provider-bigquery-reservation)
 
 This repository provides an Airflow provider based on BigQuery reservation API.
 
