@@ -1,5 +1,5 @@
 name: Lint_Test
-3on: push
+on: push
 
 jobs:
   test:
