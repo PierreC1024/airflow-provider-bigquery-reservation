@@ -26,7 +26,7 @@ jobs:
 
       - name: Pytest
         run: |
-          python -m pytest --cov-report term-missing --cov=airflow_provider_bigquery_reservation tests
+          python -m pytest --cov .
 
       - name: Upload coverage reports to Codecov
         uses: codecov/codecov-action@v3
