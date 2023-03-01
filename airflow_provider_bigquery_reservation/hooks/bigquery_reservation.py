@@ -21,15 +21,6 @@ from google.cloud.bigquery_reservation_v1 import (
     CapacityCommitment,
     Reservation,
     Assignment,
-    DeleteAssignmentRequest,
-    DeleteReservationRequest,
-    GetReservationRequest,
-    SearchAllAssignmentsRequest,
-    UpdateBiReservationRequest,
-    GetBiReservationRequest,
-    ListReservationsRequest,
-    ListCapacityCommitmentsRequest,
-    ListAssignmentsRequest,
 )
 
 from google.cloud import bigquery
@@ -179,9 +170,7 @@ class BigQueryReservationServiceHook(GoogleBaseHook):
 
         try:
             commitments = client.list_capacity_commitments(
-                request=ListCapacityCommitmentsRequest(
-                    parent=parent,
-                )
+                parent=parent,
             )
 
             return [commitment for commitment in commitments]
@@ -241,9 +230,7 @@ class BigQueryReservationServiceHook(GoogleBaseHook):
 
         try:
             reservation = client.get_reservation(
-                GetReservationRequest(
-                    name=name,
-                )
+                name=name,
             )
             return reservation
 
@@ -261,9 +248,7 @@ class BigQueryReservationServiceHook(GoogleBaseHook):
 
         try:
             reservations = client.list_reservations(
-                ListReservationsRequest(
-                    parent=parent,
-                )
+                parent=parent,
             )
             return [reservation for reservation in reservations]
 
@@ -302,7 +287,7 @@ class BigQueryReservationServiceHook(GoogleBaseHook):
         """
         client = self.get_client()
         try:
-            client.delete_reservation(request=DeleteReservationRequest(name=name))
+            client.delete_reservation(name=name)
         except Exception as e:
             self.log.error(e)
             raise AirflowException(f"Failed to delete {name} reservation.")
@@ -341,9 +326,7 @@ class BigQueryReservationServiceHook(GoogleBaseHook):
 
         try:
             reservations = client.list_assignments(
-                request=ListAssignmentsRequest(
-                    parent=parent,
-                )
+                parent=parent,
             )
 
             return [reservation for reservation in reservations]
@@ -372,9 +355,7 @@ class BigQueryReservationServiceHook(GoogleBaseHook):
         query = f"assignee=projects/{project_id}"
 
         try:
-            assignments = client.search_all_assignments(
-                request=SearchAllAssignmentsRequest(parent=parent, query=query)
-            )
+            assignments = client.search_all_assignments(parent=parent, query=query)
             # Filter status active and corresponding job_type
             for assignment in assignments:
                 if (
@@ -399,9 +380,7 @@ class BigQueryReservationServiceHook(GoogleBaseHook):
         client = self.get_client()
         try:
             client.delete_assignment(
-                request=DeleteAssignmentRequest(
-                    name=name,
-                )
+                name=name,
             )
         except Exception as e:
             self.log.error(e)
@@ -418,15 +397,11 @@ class BigQueryReservationServiceHook(GoogleBaseHook):
         size = self._convert_gb_to_kb(value=size)
 
         try:
-            bi_reservation = client.get_bi_reservation(
-                request=GetBiReservationRequest(name=parent)
-            )
+            bi_reservation = client.get_bi_reservation(name=parent)
 
             bi_reservation.size = size
 
-            client.update_bi_reservation(
-                request=UpdateBiReservationRequest(bi_reservation=bi_reservation)
-            )
+            client.update_bi_reservation(bi_reservation=bi_reservation)
         except Exception as e:
             self.log.error(e)
             raise AirflowException(f"Failed to create BI engine reservation of {size}.")
@@ -441,15 +416,11 @@ class BigQueryReservationServiceHook(GoogleBaseHook):
         client = self.get_client()
         try:
             size = self._convert_gb_to_kb(size)
-            bi_reservation = client.get_bi_reservation(
-                request=GetBiReservationRequest(name=parent)
-            )
+            bi_reservation = client.get_bi_reservation(name=parent)
 
             bi_reservation.size = max(bi_reservation.size - size, 0)
 
-            client.update_bi_reservation(
-                request=UpdateBiReservationRequest(bi_reservation=bi_reservation)
-            )
+            client.update_bi_reservation(bi_reservation=bi_reservation)
         except Exception as e:
             self.log.error(e)
             raise AirflowException(f"Failed to delete BI engine reservation of {size}.")
