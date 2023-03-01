@@ -226,7 +226,8 @@ class BigQueryReservationDeleteOperator(BaseOperator):
                 self.project_id
             ), "Need to define `project_id` i.e. the project owns the commitments."
             self.log.info(
-                f"Delete all reservations on projects/{self.project_id}/locations/{self.location}"
+                "Delete all reservations on"
+                f" projects/{self.project_id}/locations/{self.location}"
             )
             hook.delete_all_commitments(
                 project_id=self.project_id,

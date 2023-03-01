@@ -157,7 +157,8 @@ class BigQueryReservationServiceHook(GoogleBaseHook):
         except Exception as e:
             self.log.error(e)
             raise AirflowException(
-                f"Failed to create {slots} slots capacity commitment ({commitments_duration})."
+                f"Failed to create {slots} slots capacity commitment"
+                f" ({commitments_duration})."
             )
 
     def list_capacity_commitments(self, parent: str) -> list[CapacityCommitment]:
@@ -276,7 +277,8 @@ class BigQueryReservationServiceHook(GoogleBaseHook):
         except Exception as e:
             self.log.error(e)
             raise AirflowException(
-                f"Failed to update {name} reservation: modification of the slot capacity to {slots} slots."
+                f"Failed to update {name} reservation: modification of the slot"
+                f" capacity to {slots} slots."
             )
 
     def delete_reservation(self, name: str) -> None:
@@ -313,7 +315,8 @@ class BigQueryReservationServiceHook(GoogleBaseHook):
         except Exception as e:
             self.log.error(e)
             raise AirflowException(
-                "Failed to create slots assignment with assignee {assignee} and job_type {job_type}"
+                "Failed to create slots assignment with assignee {assignee} and"
+                " job_type {job_type}"
             )
 
     def list_assignments(self, parent: str) -> list[Assignment]:
@@ -535,7 +538,8 @@ class BigQueryReservationServiceHook(GoogleBaseHook):
                 slots=slots,
             )
             raise AirflowException(
-                f"Failed to purchase, to reserve and to attribute {slots} {commitments_duration} BigQuery slots commitments."
+                "Failed to purchase, to reserve and to attribute"
+                f" {slots} {commitments_duration} BigQuery slots commitments."
             )
 
     def delete_commitment_reservation_and_assignment(
@@ -569,7 +573,8 @@ class BigQueryReservationServiceHook(GoogleBaseHook):
                     )
                     self.log.info(
                         f"BigQuery reservation {reservation_name} has been updated"
-                        + f"to {reservation.slot_capacity} -> {new_slots_reservation} slots"
+                        + f"to {reservation.slot_capacity} ->"
+                        f" {new_slots_reservation} slots"
                     )
                 else:
                     if assignment_name:
