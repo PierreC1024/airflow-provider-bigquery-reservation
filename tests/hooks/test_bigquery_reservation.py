@@ -11,9 +11,7 @@ from airflow_provider_bigquery_reservation.hooks.bigquery_reservation import (
     BigQueryReservationServiceHook,
 )
 
-from google.api_core import retry
 from google.protobuf import field_mask_pb2
-from google.cloud import bigquery
 
 from google.cloud.bigquery_reservation_v1 import (
     ReservationServiceClient,
@@ -21,9 +19,7 @@ from google.cloud.bigquery_reservation_v1 import (
     Reservation,
     Assignment,
     BiReservation,
-    UpdateReservationRequest,
     DeleteAssignmentRequest,
-    DeleteCapacityCommitmentRequest,
     DeleteReservationRequest,
     GetReservationRequest,
     SearchAllAssignmentsRequest,
@@ -35,7 +31,6 @@ from google.cloud.bigquery_reservation_v1 import (
 )
 
 from airflow.exceptions import AirflowException
-from google.cloud.bigquery import DEFAULT_RETRY
 
 LOGGER = logging.getLogger(__name__)
 CREDENTIALS = "test-creds"
@@ -85,7 +80,7 @@ class TestBigQueryReservationHook:
         valid_slots = 100 * random.randint(1, 1000)
         unvalid_slots = random.randint(0, 10) * 100 + random.randint(1, 99)
 
-        assert self.hook._verify_slots_conditions(valid_slots) == None
+        assert self.hook._verify_slots_conditions(valid_slots) is None
         with pytest.raises(AirflowException):
             self.hook._verify_slots_conditions(unvalid_slots)
 
@@ -112,7 +107,7 @@ class TestBigQueryReservationHook:
         "airflow_provider_bigquery_reservation.hooks.bigquery_reservation.BigQueryReservationServiceHook.get_client"
     )
     def test_create_capacity_commitment_success(self, client_mock):
-        result = self.hook.create_capacity_commitment(
+        self.hook.create_capacity_commitment(
             PARENT, SLOTS, COMMITMENT_DURATION
         )
         client_mock.return_value.create_capacity_commitment.assert_called_once_with(
@@ -178,7 +173,7 @@ class TestBigQueryReservationHook:
         "airflow_provider_bigquery_reservation.hooks.bigquery_reservation.BigQueryReservationServiceHook.get_client"
     )
     def test_create_reservation_success(self, client_mock):
-        result = self.hook.create_reservation(
+        self.hook.create_reservation(
             PARENT,
             RESOURCE_ID,
             SLOTS,
@@ -255,7 +250,7 @@ class TestBigQueryReservationHook:
     def test_update_reservation_success(self, client_mock):
         new_reservation = Reservation(name=RESOURCE_NAME, slot_capacity=SLOTS)
         field_mask = field_mask_pb2.FieldMask(paths=["slot_capacity"])
-        result = self.hook.update_reservation(
+        self.hook.update_reservation(
             RESOURCE_NAME,
             SLOTS,
         )
@@ -381,7 +376,7 @@ class TestBigQueryReservationHook:
     )
     def test_search_assignment_success_no_assignment(self, search_all_mock):
         result = self.hook.search_assignment(PARENT, PROJECT_ID, JOB_TYPE)
-        assert result == None
+        assert result is None
 
     @mock.patch.object(
         ReservationServiceClient,
@@ -428,7 +423,6 @@ class TestBigQueryReservationHook:
             SELECT dummy
             FROM UNNEST([STRUCT(true as dummy)])
         """
-        job_config = bigquery.QueryJobConfig(use_query_cache=False)
         rslt = self.hook._is_assignment_attached_in_query(
             bq_client,
             PROJECT_ID,
@@ -442,7 +436,7 @@ class TestBigQueryReservationHook:
             job_config=query_job_config_mock(),
         )
 
-        assert rslt == True
+        assert rslt is True
 
     @mock.patch("google.cloud.bigquery.QueryJobConfig")
     def test_is_assignment_attached_false(self, query_job_config_mock):
@@ -453,7 +447,6 @@ class TestBigQueryReservationHook:
             SELECT dummy
             FROM UNNEST([STRUCT(true as dummy)])
         """
-        job_config = bigquery.QueryJobConfig(use_query_cache=False)
         rslt = self.hook._is_assignment_attached_in_query(
             bq_client,
             PROJECT_ID,
@@ -467,7 +460,7 @@ class TestBigQueryReservationHook:
             job_config=query_job_config_mock(),
         )
 
-        assert rslt == False
+        assert rslt is False
 
     # Create BI Reservation
     @mock.patch(

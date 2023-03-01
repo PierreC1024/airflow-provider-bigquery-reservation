@@ -4,10 +4,8 @@ from __future__ import annotations
 from typing import Any, Sequence
 
 from airflow.models import BaseOperator
-from airflow.exceptions import AirflowException
-from airflow.providers.google.cloud.operators.bigquery import BigQueryInsertJobOperator
+from airflow.providers.google.cloud.hooks.bigquery import BigQueryHook
 
-from google.api_core.exceptions import Conflict
 from airflow_provider_bigquery_reservation.hooks.bigquery_reservation import (
     BigQueryReservationServiceHook,
 )
@@ -108,13 +106,13 @@ class BigQueryReservationCreateOperator(BaseOperator):
         )
 
         context["ti"].xcom_push(
-            key="commitment_name", value=self.hook.get_commitment().name
+            key="commitment_name", value=self.hook._get_commitment().name
         )
         context["ti"].xcom_push(
-            key="reservation_name", value=self.hook.get_reservation().name
+            key="reservation_name", value=self.hook._get_reservation().name
         )
         context["ti"].xcom_push(
-            key="assignment_name", value=self.hook.get_assignment().name
+            key="assignment_name", value=self.hook._get_assignment().name
         )
 
     def on_kill(self) -> None:

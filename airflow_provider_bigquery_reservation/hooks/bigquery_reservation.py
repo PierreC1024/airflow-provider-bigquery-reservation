@@ -7,6 +7,7 @@ import uuid
 
 from time import sleep
 import datetime
+from typing import Sequence
 
 from airflow.providers.google.common.hooks.base_google import (
     PROVIDE_PROJECT_ID,
@@ -20,9 +21,7 @@ from google.cloud.bigquery_reservation_v1 import (
     CapacityCommitment,
     Reservation,
     Assignment,
-    UpdateReservationRequest,
     DeleteAssignmentRequest,
-    DeleteCapacityCommitmentRequest,
     DeleteReservationRequest,
     GetReservationRequest,
     SearchAllAssignmentsRequest,
@@ -69,13 +68,13 @@ class BigQueryReservationServiceHook(GoogleBaseHook):
         self.assignment: Assignment | None = None
         self._client: ReservationServiceClient | None = None
 
-    def get_commitment(self):
+    def _get_commitment(self):
         return self.commitment  # pragma: no cover
 
-    def get_reservation(self):
+    def _get_reservation(self):
         return self.reservation  # pragma: no cover
 
-    def get_assignment(self):
+    def _get_assignment(self):
         return self.assignment  # pragma: no cover
 
     def get_client(self) -> ReservationServiceClient:
@@ -332,7 +331,7 @@ class BigQueryReservationServiceHook(GoogleBaseHook):
                 "Failed to create slots assignment with assignee {assignee} and job_type {job_type}"
             )
 
-    def list_assignments(self, parent: str) -> List[Assignments]:
+    def list_assignments(self, parent: str) -> list[Assignment]:
         """
         List the assignments
 
@@ -548,7 +547,7 @@ class BigQueryReservationServiceHook(GoogleBaseHook):
                 )
 
                 # Waiting the assignment attachment to send a dummy query every 15 seconds
-                self.log.info(f"Waiting assignments attachment")
+                self.log.info("Waiting assignments attachment")
 
                 bq_client = self.get_bq_client()
                 while not self._is_assignment_attached_in_query(

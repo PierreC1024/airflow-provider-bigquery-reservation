@@ -1,4 +1,3 @@
-import pytest
 import datetime
 from unittest import mock
 
@@ -98,7 +97,7 @@ class TestBigQueryReservationCreateOperator:
 
     @mock.patch("airflow.models.baseoperator.BaseOperator.on_kill")
     def test_on_kill_hook_none(self, on_kill_mock):
-        assert self.operator.on_kill() == None
+        assert self.operator.on_kill() is None
 
     @mock.patch("airflow.models.baseoperator.BaseOperator.on_kill")
     @mock.patch(

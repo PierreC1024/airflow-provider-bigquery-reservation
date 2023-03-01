@@ -50,7 +50,6 @@ def bigquery_reservation_sample():
                 "useLegacySql": False,
             }
         },
-        location=location,
     )
 
     delete_reservation = BigQueryReservationDeleteOperator(
