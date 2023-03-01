@@ -6,7 +6,6 @@ import re
 import uuid
 
 from time import sleep
-from typing import Dict
 import datetime
 
 from airflow.providers.google.common.hooks.base_google import (

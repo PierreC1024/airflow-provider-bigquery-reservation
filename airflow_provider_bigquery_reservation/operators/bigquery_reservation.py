@@ -1,7 +1,7 @@
 """This module contains Google BigQuery reservation operators."""
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Sequence
+from typing import Any, Sequence
 
 from airflow.models import BaseOperator
 from airflow.exceptions import AirflowException

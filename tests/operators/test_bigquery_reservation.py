@@ -1,8 +1,6 @@
 import pytest
 import datetime
-import unittest
 from unittest import mock
-from functools import partial
 
 
 from airflow_provider_bigquery_reservation.operators.bigquery_reservation import (
