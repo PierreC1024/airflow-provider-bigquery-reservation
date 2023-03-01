@@ -146,6 +146,7 @@ class BigQueryReservationDeleteOperator(BaseOperator):
 
 
     :param location: Location where the reservation is attached.
+    :param project_id: Google Cloud Project where the reservation is attached.
     :param slots_provisioning: Slots number to delete.
     :param commitment_name: Commitment name
             e.g. `projects/myproject/locations/US/commitments/test`.
@@ -180,10 +181,11 @@ class BigQueryReservationDeleteOperator(BaseOperator):
     def __init__(
         self,
         location: str | None,
-        slots_provisioning: int,
-        commitment_name: str,
-        reservation_name: str,
-        assignment_name: str,
+        project_id: str | None = None,
+        slots_provisioning: int | None = None,
+        commitment_name: str | None = None,
+        reservation_name: str | None = None,
+        assignment_name: str | None = None,
         gcp_conn_id: str = "google_cloud_default",
         delegate_to: str | None = None,
         impersonation_chain: str | Sequence[str] | None = None,
@@ -192,6 +194,7 @@ class BigQueryReservationDeleteOperator(BaseOperator):
     ) -> None:
         super().__init__(**kwargs)
         self.location = location
+        self.project_id = project_id
         self.slots_provisioning = slots_provisioning
         self.commitment_name = commitment_name
         self.reservation_name = reservation_name
@@ -210,12 +213,27 @@ class BigQueryReservationDeleteOperator(BaseOperator):
             location=self.location,
         )
 
-        hook.delete_commitment_reservation_and_assignment(
-            commitment_name=self.commitment_name,
-            reservation_name=self.reservation_name,
-            assignment_name=self.assignment_name,
-            slots=self.slots_provisioning,
-        )
+        if self.commitment_name or self.reservation_name or self.assignment_name:
+            assert (
+                self.slots_provisioning
+            ), "Need to define `slots_provisioning`: Number of slots to delete"
+            hook.delete_commitment_reservation_and_assignment(
+                commitment_name=self.commitment_name,
+                reservation_name=self.reservation_name,
+                assignment_name=self.assignment_name,
+                slots=self.slots_provisioning,
+            )
+        else:
+            assert (
+                self.project_id
+            ), "Need to define `project_id` i.e. the project owns the commitments."
+            self.log.info(
+                f"Delete all reservations on projects/{self.project_id}/locations/{self.location}"
+            )
+            hook.delete_all_commitments(
+                project_id=self.project_id,
+                location=self.location,
+            )
 
 
 class BigQueryBiEngineReservationCreateOperator(BaseOperator):

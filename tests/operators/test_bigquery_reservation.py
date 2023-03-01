@@ -137,9 +137,9 @@ class TestBigQueryReservationDeleteOperator:
     @mock.patch(
         "airflow_provider_bigquery_reservation.hooks.bigquery_reservation.BigQueryReservationServiceHook.delete_commitment_reservation_and_assignment"
     )
-    def test_execute(
+    def test_execute_with_resources_name(
         self,
-        delete_commitment_reservation_and_assignment_moke,
+        delete_commitment_reservation_and_assignment_mock,
         client_mock,
         get_conn_mock,
     ):
@@ -154,11 +154,37 @@ class TestBigQueryReservationDeleteOperator:
 
         operator.execute(None)
 
-        delete_commitment_reservation_and_assignment_moke.assert_called_once_with(
+        delete_commitment_reservation_and_assignment_mock.assert_called_once_with(
             commitment_name=COMMITMENT.name,
             reservation_name=RESERVATION.name,
             assignment_name=ASSIGNMENT.name,
             slots=SLOTS,
+        )
+
+    @mock.patch("airflow.models.connection.Connection.get_connection_from_secrets")
+    @mock.patch(
+        "airflow_provider_bigquery_reservation.hooks.bigquery_reservation.BigQueryReservationServiceHook"
+    )
+    @mock.patch(
+        "airflow_provider_bigquery_reservation.hooks.bigquery_reservation.BigQueryReservationServiceHook.delete_all_commitments"
+    )
+    def test_execute_with_project(
+        self,
+        delete_all_commitments_mock,
+        client_mock,
+        get_conn_mock,
+    ):
+        operator = BigQueryReservationDeleteOperator(
+            task_id=TASK_ID,
+            location=LOCATION,
+            project_id=PROJECT_ID,
+        )
+
+        operator.execute(None)
+
+        delete_all_commitments_mock.assert_called_once_with(
+            project_id=PROJECT_ID,
+            location=LOCATION,
         )
 
 

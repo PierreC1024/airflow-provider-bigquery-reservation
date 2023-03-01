@@ -29,6 +29,9 @@ from google.cloud.bigquery_reservation_v1 import (
     SearchAllAssignmentsRequest,
     UpdateBiReservationRequest,
     GetBiReservationRequest,
+    ListReservationsRequest,
+    ListCapacityCommitmentsRequest,
+    ListAssignmentsRequest,
 )
 
 from google.cloud import bigquery
@@ -168,6 +171,27 @@ class BigQueryReservationServiceHook(GoogleBaseHook):
                 f"Failed to create {slots} slots capacity commitment ({commitments_duration})."
             )
 
+    def list_capacity_commitments(self, parent: str) -> list[CapacityCommitment]:
+        """
+        List the capacity commitments
+
+        :param parent: Parent resource name e.g. `projects/myproject/locations/US`
+        """
+        client = self.get_client()
+
+        try:
+            commitments = client.list_capacity_commitments(
+                request=ListCapacityCommitmentsRequest(
+                    parent=parent,
+                )
+            )
+
+            return [commitment for commitment in commitments]
+
+        except Exception as e:
+            self.log.error(e)
+            raise AirflowException(f"Failed to list capacity commitment: {parent}.")
+
     def delete_capacity_commitment(self, name: str) -> None:
         """
         Delete capacity commitment.
@@ -229,6 +253,26 @@ class BigQueryReservationServiceHook(GoogleBaseHook):
             self.log.error(e)
             raise AirflowException(f"Failed to get reservation: {name}.")
 
+    def list_reservations(self, parent: str) -> list[Reservation]:
+        """
+        List the reservations
+
+        :param parent: Parent resource name e.g. `projects/myproject/locations/US`
+        """
+        client = self.get_client()
+
+        try:
+            reservations = client.list_reservations(
+                ListReservationsRequest(
+                    parent=parent,
+                )
+            )
+            return [reservation for reservation in reservations]
+
+        except Exception as e:
+            self.log.error(e)
+            raise AirflowException(f"Failed to list reservation: {parent}.")
+
     def update_reservation(self, name: str, slots: int) -> None:
         """
         Update reservation with a new slots capacity.
@@ -288,6 +332,27 @@ class BigQueryReservationServiceHook(GoogleBaseHook):
             raise AirflowException(
                 "Failed to create slots assignment with assignee {assignee} and job_type {job_type}"
             )
+
+    def list_assignments(self, parent: str) -> List[Assignments]:
+        """
+        List the assignments
+
+        :param parent: Parent resource name e.g. `projects/myproject/locations/US/reservations/-`
+        """
+        client = self.get_client()
+
+        try:
+            reservations = client.list_assignments(
+                request=ListAssignmentsRequest(
+                    parent=parent,
+                )
+            )
+
+            return [reservation for reservation in reservations]
+
+        except Exception as e:
+            self.log.error(e)
+            raise AirflowException(f"Failed to list capacity commitment: {parent}.")
 
     def search_assignment(
         self, parent: str, project_id: str, job_type: str
@@ -565,3 +630,29 @@ class BigQueryReservationServiceHook(GoogleBaseHook):
                 + "reservation: {reservation_name}, "
                 + "commitments: {commitment_name}."
             )
+
+    def delete_all_commitments(self, project_id: str, location: str) -> None:
+        """
+        Delete all commitments, reservation and assignment associated to a specific project and location.
+
+        :param project_id: Commitment project
+        :param location: Commitment location
+        """
+        parent = f"projects/{project_id}/locations/{self.location}"
+        try:
+            commitments = self.list_capacity_commitments(parent)
+            reservations = self.list_reservations(parent)
+            assignments = self.list_assignments(f"{parent}/reservations/-")
+
+            for assignment in assignments:
+                self.delete_assignment(name=assignment.name)
+
+            for reservation in reservations:
+                self.delete_reservation(name=reservation.name)
+
+            for commitment in commitments:
+                self.delete_capacity_commitment(name=commitment.name)
+
+        except Exception as e:
+            self.log.error(e)
+            raise AirflowException("Failed to delete commitments in {parent}")
