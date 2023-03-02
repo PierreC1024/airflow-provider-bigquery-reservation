@@ -621,6 +621,7 @@ class TestBigQueryReservationHook:
     @mock.patch.object(
         BigQueryReservationServiceHook,
         "create_reservation",
+        return_value=Reservation(name=RESOURCE_NAME),
     )
     @mock.patch.object(BigQueryReservationServiceHook, "create_assignment")
     @mock.patch.object(BigQueryReservationServiceHook, "get_bq_client")
@@ -660,7 +661,7 @@ class TestBigQueryReservationHook:
         )
 
         create_assignment_mock.assert_called_once_with(
-            parent=RESOURCE_NAME,
+            parent=create_reservation_mock.return_value.name,
             project_id=PROJECT_ID,
             job_type=JOB_TYPE,
         )
@@ -717,6 +718,7 @@ class TestBigQueryReservationHook:
                 commitment_name=RESOURCE_NAME,
                 reservation_name=RESOURCE_NAME,
                 assignment_name=RESOURCE_NAME,
+                slots=SLOTS,
             )
 
     @mock.patch.object(
@@ -743,11 +745,12 @@ class TestBigQueryReservationHook:
                 commitment_name=None,
                 reservation_name=None,
                 assignment_name=None,
+                slots=SLOTS,
             )
 
     # Delete Commitment Reservation And assignment
     def test_delete_commitment_reservation_and_assignment_none(self, caplog):
-        self.hook.delete_commitment_reservation_and_assignment()
+        self.hook.delete_commitment_reservation_and_assignment(slots=SLOTS)
         assert "None BigQuery commitment to delete" in caplog.text
         assert "None BigQuery reservation to update or delete" in caplog.text
 
@@ -832,6 +835,7 @@ class TestBigQueryReservationHook:
         with pytest.raises(AirflowException):
             self.hook.delete_commitment_reservation_and_assignment(
                 commitment_name=RESOURCE_NAME,
+                slots=SLOTS,
             )
 
     @mock.patch.object(
