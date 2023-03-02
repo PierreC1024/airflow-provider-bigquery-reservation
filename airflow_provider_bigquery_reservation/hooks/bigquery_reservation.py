@@ -30,9 +30,6 @@ class BigQueryReservationServiceHook(GoogleBaseHook):
 
     :param location: Location where the reservation is attached.
     :param gcp_conn_id: The connection ID used to connect to Google Cloud.
-    :param delegate_to: The account to impersonate using domain-wide delegation of authority,
-        if any. For this to work, the service account making the request must have
-        domain-wide delegation enabled.
     :param impersonation_chain: Optional service account to impersonate using short-term
         credentials, or chained list of accounts required to get the access_token
         of the last account in the list, which will be impersonated in the request.
@@ -51,12 +48,10 @@ class BigQueryReservationServiceHook(GoogleBaseHook):
         self,
         location: str,
         gcp_conn_id: str = GoogleBaseHook.default_conn_name,
-        delegate_to: str | None = None,
         impersonation_chain: str | Sequence[str] | None = None,
     ) -> None:
         super().__init__(
             gcp_conn_id=gcp_conn_id,
-            delegate_to=delegate_to,
             impersonation_chain=impersonation_chain,
         )
         self.location = location

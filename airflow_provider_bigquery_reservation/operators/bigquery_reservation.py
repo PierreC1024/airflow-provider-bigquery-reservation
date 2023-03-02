@@ -34,9 +34,6 @@ class BigQueryReservationCreateOperator(BaseOperator):
     :param commitments_duration: Commitment minimum durations i.e. one minute (FLEX, default), one month (MONTH) or one year (YEAR).
     :param assignment_job_type: Commitment assignment job type (PIPELINE, QUERY, ML_EXTERNAL, BACKGROUND)
     :param gcp_conn_id: Connection ID used to connect to Google Cloud.
-    :param delegate_to: Account to impersonate using domain-wide delegation of authority,
-        if any. For this to work, the service account making the request must have
-        domain-wide delegation enabled.
     :param impersonation_chain: Optional service account to impersonate using short-term
         credentials, or chained list of accounts required to get the access_token
         of the last account in the list, which will be impersonated in the request.
@@ -64,7 +61,6 @@ class BigQueryReservationCreateOperator(BaseOperator):
         commitments_duration: str = "FLEX",
         assignment_job_type: str = "QUERY",
         gcp_conn_id: str = "google_cloud_default",
-        delegate_to: str | None = None,
         impersonation_chain: str | Sequence[str] | None = None,
         cancel_on_kill: bool = True,
         **kwargs,
@@ -76,7 +72,6 @@ class BigQueryReservationCreateOperator(BaseOperator):
         self.commitments_duration = commitments_duration
         self.assignment_job_type = assignment_job_type
         self.gcp_conn_id = gcp_conn_id
-        self.delegate_to = delegate_to
         self.impersonation_chain = impersonation_chain
         self.cancel_on_kill = cancel_on_kill
         self.hook: BigQueryReservationServiceHook | None = None
@@ -85,7 +80,6 @@ class BigQueryReservationCreateOperator(BaseOperator):
         """Create a slot reservation."""
         self.hook = BigQueryReservationServiceHook(
             gcp_conn_id=self.gcp_conn_id,
-            delegate_to=self.delegate_to,
             impersonation_chain=self.impersonation_chain,
             location=self.location,
         )
@@ -153,9 +147,6 @@ class BigQueryReservationDeleteOperator(BaseOperator):
     :param assignment_name: Assignment name
             e.g. `projects/myproject/locations/US/reservations/test/assignments/8950226598037373530`.
     :param gcp_conn_id: Connection ID used to connect to Google Cloud.
-    :param delegate_to: Account to impersonate using domain-wide delegation of authority,
-        if any. For this to work, the service account making the request must have
-        domain-wide delegation enabled.
     :param impersonation_chain: Optional service account to impersonate using short-term
         credentials, or chained list of accounts required to get the access_token
         of the last account in the list, which will be impersonated in the request.
@@ -185,7 +176,6 @@ class BigQueryReservationDeleteOperator(BaseOperator):
         reservation_name: str | None = None,
         assignment_name: str | None = None,
         gcp_conn_id: str = "google_cloud_default",
-        delegate_to: str | None = None,
         impersonation_chain: str | Sequence[str] | None = None,
         cancel_on_kill: bool = True,
         **kwargs,
@@ -198,7 +188,6 @@ class BigQueryReservationDeleteOperator(BaseOperator):
         self.reservation_name = reservation_name
         self.assignment_name = assignment_name
         self.gcp_conn_id = gcp_conn_id
-        self.delegate_to = delegate_to
         self.impersonation_chain = impersonation_chain
         self.cancel_on_kill = cancel_on_kill
         self.hook: BigQueryHook | None = None
@@ -207,7 +196,6 @@ class BigQueryReservationDeleteOperator(BaseOperator):
         """Delete a slot reservation."""
         hook = BigQueryReservationServiceHook(
             gcp_conn_id=self.gcp_conn_id,
-            delegate_to=self.delegate_to,
             impersonation_chain=self.impersonation_chain,
             location=self.location,
         )
@@ -244,9 +232,6 @@ class BigQueryBiEngineReservationCreateOperator(BaseOperator):
     :param location: Location where the reservation is attached.
     :param size: Memory size to reserve (GB).
     :param gcp_conn_id: Connection ID used to connect to Google Cloud.
-    :param delegate_to: Account to impersonate using domain-wide delegation of authority,
-        if any. For this to work, the service account making the request must have
-        domain-wide delegation enabled.
     :param impersonation_chain: Optional service account to impersonate using short-term
         credentials, or chained list of accounts required to get the access_token
         of the last account in the list, which will be impersonated in the request.
@@ -271,7 +256,6 @@ class BigQueryBiEngineReservationCreateOperator(BaseOperator):
         location: str,
         size: int,
         gcp_conn_id: str = "google_cloud_default",
-        delegate_to: str | None = None,
         impersonation_chain: str | Sequence[str] | None = None,
         cancel_on_kill: bool = True,
         **kwargs,
@@ -281,7 +265,6 @@ class BigQueryBiEngineReservationCreateOperator(BaseOperator):
         self.location = location
         self.size = size
         self.gcp_conn_id = gcp_conn_id
-        self.delegate_to = delegate_to
         self.impersonation_chain = impersonation_chain
         self.cancel_on_kill = cancel_on_kill
         self.hook: BigQueryHook | None = None
@@ -292,7 +275,6 @@ class BigQueryBiEngineReservationCreateOperator(BaseOperator):
 
         hook = BigQueryReservationServiceHook(
             gcp_conn_id=self.gcp_conn_id,
-            delegate_to=self.delegate_to,
             impersonation_chain=self.impersonation_chain,
             location=self.location,
         )
@@ -311,9 +293,6 @@ class BigQueryBiEngineReservationDeleteOperator(BaseOperator):
     :param location: Location where the reservation is attached.
     :param size: Memory size to reserve (GB).
     :param gcp_conn_id: The connection ID used to connect to Google Cloud.
-    :param delegate_to: The account to impersonate using domain-wide delegation of authority,
-        if any. For this to work, the service account making the request must have
-        domain-wide delegation enabled.
     :param impersonation_chain: Optional service account to impersonate using short-term
         credentials, or chained list of accounts required to get the access_token
         of the last account in the list, which will be impersonated in the request.
@@ -338,7 +317,6 @@ class BigQueryBiEngineReservationDeleteOperator(BaseOperator):
         location: str,
         size: int,
         gcp_conn_id: str = "google_cloud_default",
-        delegate_to: str | None = None,
         impersonation_chain: str | Sequence[str] | None = None,
         cancel_on_kill: bool = True,
         **kwargs,
@@ -348,7 +326,6 @@ class BigQueryBiEngineReservationDeleteOperator(BaseOperator):
         self.location = location
         self.size = size
         self.gcp_conn_id = gcp_conn_id
-        self.delegate_to = delegate_to
         self.impersonation_chain = impersonation_chain
         self.cancel_on_kill = cancel_on_kill
         self.hook: BigQueryHook | None = None
@@ -359,7 +336,6 @@ class BigQueryBiEngineReservationDeleteOperator(BaseOperator):
 
         hook = BigQueryReservationServiceHook(
             gcp_conn_id=self.gcp_conn_id,
-            delegate_to=self.delegate_to,
             impersonation_chain=self.impersonation_chain,
             location=self.location,
         )

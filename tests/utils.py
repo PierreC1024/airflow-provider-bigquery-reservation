@@ -4,13 +4,11 @@
 def mock_base_gcp_hook_no_default_project_id(
     self,
     gcp_conn_id="google_cloud_default",
-    delegate_to=None,
     impersonation_chain=None,
 ):
     """Mock base gcp hook."""
     self.extras_list = {}
     self._conn = gcp_conn_id
-    self.delegate_to = delegate_to
     self.impersonation_chain = impersonation_chain
     self._client = None
     self._conn = None
