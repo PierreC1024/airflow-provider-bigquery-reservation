@@ -1,33 +1,24 @@
 """This module contains a BigQuery Reservation Hook."""
 from __future__ import annotations
 
+import datetime
 import hashlib
 import re
 import uuid
-
 from time import sleep
-import datetime
 from typing import Sequence
 
-from airflow.providers.google.common.hooks.base_google import (
-    PROVIDE_PROJECT_ID,
-    GoogleBaseHook,
-)
-from airflow.providers.google.common.consts import CLIENT_INFO
 from airflow.exceptions import AirflowException
-
-from google.cloud.bigquery_reservation_v1 import (
-    ReservationServiceClient,
-    CapacityCommitment,
-    Reservation,
-    Assignment,
-)
-
-from google.cloud import bigquery
-
-
-from google.protobuf import field_mask_pb2
+from airflow.providers.google.common.consts import CLIENT_INFO
+from airflow.providers.google.common.hooks.base_google import GoogleBaseHook
+from airflow.providers.google.common.hooks.base_google import PROVIDE_PROJECT_ID
 from google.api_core import retry
+from google.cloud import bigquery
+from google.cloud.bigquery_reservation_v1 import Assignment
+from google.cloud.bigquery_reservation_v1 import CapacityCommitment
+from google.cloud.bigquery_reservation_v1 import Reservation
+from google.cloud.bigquery_reservation_v1 import ReservationServiceClient
+from google.protobuf import field_mask_pb2
 
 
 class BigQueryReservationServiceHook(GoogleBaseHook):

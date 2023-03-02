@@ -1,27 +1,24 @@
-import pytest
-import random
-import logging
 import datetime
+import logging
+import random
 import uuid
 from unittest import mock
 
-from tests.utils import mock_base_gcp_hook_no_default_project_id, QueryJob
+import pytest
+from airflow.exceptions import AirflowException
 from airflow.providers.google.common.consts import CLIENT_INFO
+from google.cloud.bigquery_reservation_v1 import Assignment
+from google.cloud.bigquery_reservation_v1 import BiReservation
+from google.cloud.bigquery_reservation_v1 import CapacityCommitment
+from google.cloud.bigquery_reservation_v1 import Reservation
+from google.cloud.bigquery_reservation_v1 import ReservationServiceClient
+from google.protobuf import field_mask_pb2
+
 from airflow_provider_bigquery_reservation.hooks.bigquery_reservation import (
     BigQueryReservationServiceHook,
 )
-
-from google.protobuf import field_mask_pb2
-
-from google.cloud.bigquery_reservation_v1 import (
-    ReservationServiceClient,
-    CapacityCommitment,
-    Reservation,
-    Assignment,
-    BiReservation,
-)
-
-from airflow.exceptions import AirflowException
+from tests.utils import mock_base_gcp_hook_no_default_project_id
+from tests.utils import QueryJob
 
 LOGGER = logging.getLogger(__name__)
 CREDENTIALS = "test-creds"

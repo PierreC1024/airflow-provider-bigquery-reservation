@@ -5,14 +5,14 @@ query on the slots reserved, then delete the reservation.
 """
 import os
 
-from pendulum import datetime
-
 from airflow.decorators import dag
-
 from airflow.providers.google.cloud.operators.bigquery import BigQueryInsertJobOperator
+from pendulum import datetime
 
 from airflow_provider_bigquery_reservation.operators.bigquery_reservation import (
     BigQueryReservationCreateOperator,
+)
+from airflow_provider_bigquery_reservation.operators.bigquery_reservation import (
     BigQueryReservationDeleteOperator,
 )
 

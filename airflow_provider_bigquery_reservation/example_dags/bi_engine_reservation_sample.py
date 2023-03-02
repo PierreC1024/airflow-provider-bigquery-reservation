@@ -4,14 +4,15 @@ In this DAG, you reserve 100GB in BI engine between from 8am ato 7pm each workin
 """
 import os
 
-from pendulum import datetime, Time
-
 from airflow.decorators import dag
 from airflow.sensors.time_sensor import TimeSensor
-
+from pendulum import datetime
+from pendulum import Time
 
 from airflow_provider_bigquery_reservation.operators.bigquery_reservation import (
     BigQueryBiEngineReservationCreateOperator,
+)
+from airflow_provider_bigquery_reservation.operators.bigquery_reservation import (
     BigQueryBiEngineReservationDeleteOperator,
 )
 
