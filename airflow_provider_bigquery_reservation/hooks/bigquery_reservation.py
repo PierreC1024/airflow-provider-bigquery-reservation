@@ -42,8 +42,8 @@ class BigQueryReservationServiceHook(GoogleBaseHook):
 
     def __init__(
         self,
+        location: str,
         gcp_conn_id: str = GoogleBaseHook.default_conn_name,
-        location: str | None = None,
         delegate_to: str | None = None,
         impersonation_chain: str | Sequence[str] | None = None,
     ) -> None:
@@ -135,7 +135,7 @@ class BigQueryReservationServiceHook(GoogleBaseHook):
         parent: str,
         slots: int,
         commitments_duration: str,
-    ) -> None:
+    ) -> CapacityCommitment:
         """
         Create capacity commitment.
 
@@ -146,13 +146,13 @@ class BigQueryReservationServiceHook(GoogleBaseHook):
         client = self.get_client()
 
         try:
-            commitment = client.create_capacity_commitment(
+            self.commitment = client.create_capacity_commitment(
                 parent=parent,
                 capacity_commitment=CapacityCommitment(
                     plan=commitments_duration, slot_count=slots
                 ),
             )
-            self.commitment = commitment
+            return self.commitment
 
         except Exception as e:
             self.log.error(e)
@@ -197,7 +197,9 @@ class BigQueryReservationServiceHook(GoogleBaseHook):
             self.log.error(e)
             raise AirflowException(f"Failed to delete {name} capacity commitment.")
 
-    def create_reservation(self, parent: str, reservation_id: str, slots: int) -> None:
+    def create_reservation(
+        self, parent: str, reservation_id: str, slots: int
+    ) -> Reservation:
         """
         Create reservation.
 
@@ -208,12 +210,12 @@ class BigQueryReservationServiceHook(GoogleBaseHook):
         client = self.get_client()
 
         try:
-            reservation = client.create_reservation(
+            self.reservation = client.create_reservation(
                 parent=parent,
                 reservation_id=reservation_id,
                 reservation=Reservation(slot_capacity=slots, ignore_idle_slots=True),
             )
-            self.reservation = reservation
+            return self.reservation
 
         except Exception as e:
             self.log.error(e)
@@ -294,7 +296,9 @@ class BigQueryReservationServiceHook(GoogleBaseHook):
             self.log.error(e)
             raise AirflowException(f"Failed to delete {name} reservation.")
 
-    def create_assignment(self, parent: str, project_id: str, job_type: str) -> None:
+    def create_assignment(
+        self, parent: str, project_id: str, job_type: str
+    ) -> Assignment:
         """
         Create assignment.
 
@@ -306,11 +310,11 @@ class BigQueryReservationServiceHook(GoogleBaseHook):
         assignee = f"projects/{project_id}"
 
         try:
-            assignment = client.create_assignment(
+            self.assignment = client.create_assignment(
                 parent=parent,
                 assignment=Assignment(job_type=job_type, assignee=assignee),
             )
-            self.assignment = assignment
+            return self.assignment
 
         except Exception as e:
             self.log.error(e)
@@ -492,7 +496,7 @@ class BigQueryReservationServiceHook(GoogleBaseHook):
         parent = f"projects/{project_id}/locations/{self.location}"
 
         try:
-            self.create_capacity_commitment(
+            capacity_commitment = self.create_capacity_commitment(
                 parent=parent, slots=slots, commitments_duration=commitments_duration
             )
 
@@ -511,11 +515,11 @@ class BigQueryReservationServiceHook(GoogleBaseHook):
                     name=current_reservation.name, slots=new_slots_reservation
                 )
             else:
-                self.create_reservation(
+                reservation = self.create_reservation(
                     parent=parent, reservation_id=resource_id, slots=slots
                 )
-                self.create_assignment(
-                    parent=self.reservation.name,
+                assignment = self.create_assignment(
+                    parent=reservation.name,
                     project_id=project_id,
                     job_type=assignment_job_type,
                 )
@@ -531,10 +535,13 @@ class BigQueryReservationServiceHook(GoogleBaseHook):
 
         except Exception as e:
             self.log.error(e)
+            commitment_name = self.commitment.name if self.commitment else None
+            reservation_name = self.reservation.name if self.reservation else None
+            assignment_name = self.assignment.name if self.assignment else None
             self.delete_commitment_reservation_and_assignment(
-                commitment_name=self.commitment.name,
-                reservation_name=self.reservation.name,
-                assignment_name=self.assignment.name,
+                commitment_name=commitment_name,
+                reservation_name=reservation_name,
+                assignment_name=assignment_name,
                 slots=slots,
             )
             raise AirflowException(
@@ -544,10 +551,10 @@ class BigQueryReservationServiceHook(GoogleBaseHook):
 
     def delete_commitment_reservation_and_assignment(
         self,
+        slots: int,
         commitment_name: str | None = None,
         reservation_name: str | None = None,
         assignment_name: str | None = None,
-        slots: int | None = None,
     ) -> None:
         """
         If it exists, delete/update the following resources:
@@ -555,10 +562,10 @@ class BigQueryReservationServiceHook(GoogleBaseHook):
         - If the amount of slots deleted is lower than the reservation slots capacity,
         update the reservation to the corresponding slots otherwise delete reservation and assignment.
 
+        :param slots: Slots number to delete
         :param commitment_name: Commitment name e.g. `projects/myproject/locations/US/commitments/test`
         :param reservation_name: Reservation name e.g. `projects/myproject/locations/US/reservations/test`
         :param assignment_name: Assignment name e.g. `projects/myproject/locations/US/reservations/test/assignments/8950226598037373530`
-        :param slots: Slots number to delete
         """
         try:
             if reservation_name:

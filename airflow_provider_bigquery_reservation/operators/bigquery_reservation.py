@@ -61,7 +61,7 @@ class BigQueryReservationCreateOperator(BaseOperator):
     def __init__(
         self,
         project_id: str | None,
-        location: str | None,
+        location: str,
         slots_provisioning: int,
         commitments_duration: str = "FLEX",
         assignment_job_type: str = "QUERY",
@@ -178,7 +178,7 @@ class BigQueryReservationDeleteOperator(BaseOperator):
 
     def __init__(
         self,
-        location: str | None,
+        location: str,
         project_id: str | None = None,
         slots_provisioning: int | None = None,
         commitment_name: str | None = None,
@@ -267,7 +267,7 @@ class BigQueryBiEngineReservationCreateOperator(BaseOperator):
     def __init__(
         self,
         project_id: str | None,
-        location: str | None,
+        location: str,
         size: int,
         gcp_conn_id: str = "google_cloud_default",
         delegate_to: str | None = None,
@@ -333,7 +333,7 @@ class BigQueryBiEngineReservationDeleteOperator(BaseOperator):
     def __init__(
         self,
         project_id: str | None,
-        location: str | None,
+        location: str,
         size: int,
         gcp_conn_id: str = "google_cloud_default",
         delegate_to: str | None = None,
