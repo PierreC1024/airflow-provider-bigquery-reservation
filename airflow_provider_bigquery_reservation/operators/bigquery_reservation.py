@@ -1,13 +1,9 @@
 """This module contains Google BigQuery reservation operators."""
 from __future__ import annotations
-
-from typing import TYPE_CHECKING, Any, Sequence
+from typing import Any, Sequence
 
 from airflow.models import BaseOperator
-from airflow.exceptions import AirflowException
-from airflow.providers.google.cloud.operators.bigquery import BigQueryInsertJobOperator
-
-from google.api_core.exceptions import Conflict
+from airflow.providers.google.cloud.hooks.bigquery import BigQueryHook
 from airflow_provider_bigquery_reservation.hooks.bigquery_reservation import (
     BigQueryReservationServiceHook,
 )
@@ -19,8 +15,8 @@ bq_reservation_operator_color = "#9c5fff"
 class BigQueryReservationCreateOperator(BaseOperator):
     """
     Buy BigQuery slots and assign them to a GCP project.
-    This operator works in the following way:
 
+    This operator works in the following way:
     - create slots capacity commitment with the number of slots specified (increment of 100)
     - create or update (if an assignment on the specified project already exists) reservation
       with the number of slots specified.
@@ -63,7 +59,7 @@ class BigQueryReservationCreateOperator(BaseOperator):
     def __init__(
         self,
         project_id: str | None,
-        location: str | None,
+        location: str,
         slots_provisioning: int,
         commitments_duration: str = "FLEX",
         assignment_job_type: str = "QUERY",
@@ -86,6 +82,7 @@ class BigQueryReservationCreateOperator(BaseOperator):
         self.hook: BigQueryReservationServiceHook | None = None
 
     def execute(self, context: Any) -> None:
+        """Create a slot reservation."""
         self.hook = BigQueryReservationServiceHook(
             gcp_conn_id=self.gcp_conn_id,
             delegate_to=self.delegate_to,
@@ -108,16 +105,17 @@ class BigQueryReservationCreateOperator(BaseOperator):
         )
 
         context["ti"].xcom_push(
-            key="commitment_name", value=self.hook.get_commitment().name
+            key="commitment_name", value=self.hook._get_commitment().name
         )
         context["ti"].xcom_push(
-            key="reservation_name", value=self.hook.get_reservation().name
+            key="reservation_name", value=self.hook._get_reservation().name
         )
         context["ti"].xcom_push(
-            key="assignment_name", value=self.hook.get_assignment().name
+            key="assignment_name", value=self.hook._get_assignment().name
         )
 
     def on_kill(self) -> None:
+        """Delete the reservation if task is cancelled."""
         super().on_kill()
         if self.hook is not None:
             commitment_name = (
@@ -180,7 +178,7 @@ class BigQueryReservationDeleteOperator(BaseOperator):
 
     def __init__(
         self,
-        location: str | None,
+        location: str,
         project_id: str | None = None,
         slots_provisioning: int | None = None,
         commitment_name: str | None = None,
@@ -206,6 +204,7 @@ class BigQueryReservationDeleteOperator(BaseOperator):
         self.hook: BigQueryHook | None = None
 
     def execute(self, context: Any):
+        """Delete a slot reservation."""
         hook = BigQueryReservationServiceHook(
             gcp_conn_id=self.gcp_conn_id,
             delegate_to=self.delegate_to,
@@ -228,7 +227,8 @@ class BigQueryReservationDeleteOperator(BaseOperator):
                 self.project_id
             ), "Need to define `project_id` i.e. the project owns the commitments."
             self.log.info(
-                f"Delete all reservations on projects/{self.project_id}/locations/{self.location}"
+                "Delete all reservations on"
+                f" projects/{self.project_id}/locations/{self.location}"
             )
             hook.delete_all_commitments(
                 project_id=self.project_id,
@@ -268,7 +268,7 @@ class BigQueryBiEngineReservationCreateOperator(BaseOperator):
     def __init__(
         self,
         project_id: str | None,
-        location: str | None,
+        location: str,
         size: int,
         gcp_conn_id: str = "google_cloud_default",
         delegate_to: str | None = None,
@@ -287,6 +287,7 @@ class BigQueryBiEngineReservationCreateOperator(BaseOperator):
         self.hook: BigQueryHook | None = None
 
     def execute(self, context: Any) -> None:
+        """Create a BI Engine reservation."""
         parent = f"projects/{self.project_id}/locations/{self.location}/biReservation"
 
         hook = BigQueryReservationServiceHook(
@@ -334,7 +335,7 @@ class BigQueryBiEngineReservationDeleteOperator(BaseOperator):
     def __init__(
         self,
         project_id: str | None,
-        location: str | None,
+        location: str,
         size: int,
         gcp_conn_id: str = "google_cloud_default",
         delegate_to: str | None = None,
@@ -353,6 +354,7 @@ class BigQueryBiEngineReservationDeleteOperator(BaseOperator):
         self.hook: BigQueryHook | None = None
 
     def execute(self, context: Any) -> None:
+        """Delete a BI Engine reservation."""
         parent = f"projects/{self.project_id}/locations/{self.location}/biReservation"
 
         hook = BigQueryReservationServiceHook(

@@ -1,15 +1,17 @@
+"""A sample DAG to show how the BigQuery flex-slots reservation could work.
+
+In this DAG, you reserve 100 flex slots and assign on a project, then run a
+query on the slots reserved, then delete the reservation.
+"""
 import os
 
-from pendulum import datetime
-
 from airflow.decorators import dag
-
 from airflow.providers.google.cloud.operators.bigquery import BigQueryInsertJobOperator
-
 from airflow_provider_bigquery_reservation.operators.bigquery_reservation import (
     BigQueryReservationCreateOperator,
     BigQueryReservationDeleteOperator,
 )
+from pendulum import datetime
 
 
 @dag(
@@ -31,7 +33,6 @@ def bigquery_reservation_sample():
     2. Run a query
     3. Delete commitment
     """
-
     create_reservation = BigQueryReservationCreateOperator(
         task_id="create_reservation",
     )
@@ -50,7 +51,6 @@ def bigquery_reservation_sample():
                 "useLegacySql": False,
             }
         },
-        location=location,
     )
 
     delete_reservation = BigQueryReservationDeleteOperator(

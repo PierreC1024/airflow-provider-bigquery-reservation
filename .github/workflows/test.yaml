@@ -24,6 +24,14 @@ jobs:
         run: |
           python -m black --check .
 
+      - name: MyPy
+        run: |
+          python -m mypy --ignore-missing-imports --disable-error-code attr-defined airflow_provider_bigquery_reservation tests
+
+      - name: PyDocStyle
+        run: |
+          python -m pydocstyle --add-ignore=D104,D107
+
       - name: Pytest
         run: |
           python -m pytest --cov-report term-missing --cov=airflow_provider_bigquery_reservation tests

@@ -1,23 +1,19 @@
-import pytest
 import datetime
-import unittest
 from unittest import mock
-from functools import partial
-
 
 from airflow_provider_bigquery_reservation.operators.bigquery_reservation import (
-    BigQueryReservationCreateOperator,
-    BigQueryReservationDeleteOperator,
     BigQueryBiEngineReservationCreateOperator,
     BigQueryBiEngineReservationDeleteOperator,
+    BigQueryReservationCreateOperator,
+    BigQueryReservationDeleteOperator,
     BigQueryReservationServiceHook,
 )
-
 from google.cloud.bigquery_reservation_v1 import (
+    Assignment,
     CapacityCommitment,
     Reservation,
-    Assignment,
 )
+
 
 # ToDo: Put all in a config file
 PROJECT_ID = "test"
@@ -46,22 +42,32 @@ class TestBigQueryReservationCreateOperator:
 
     @mock.patch("airflow.models.connection.Connection.get_connection_from_secrets")
     @mock.patch.object(
-        BigQueryReservationServiceHook, "generate_resource_id", return_value=RESOURCE_ID
+        BigQueryReservationServiceHook,
+        "generate_resource_id",
+        return_value=RESOURCE_ID,
     )
     @mock.patch.object(
-        BigQueryReservationServiceHook, "create_commitment_reservation_and_assignment"
+        BigQueryReservationServiceHook,
+        "create_commitment_reservation_and_assignment",
     )
     @mock.patch.object(
-        BigQueryReservationServiceHook, "get_commitment", return_value=COMMITMENT
+        BigQueryReservationServiceHook,
+        "_get_commitment",
+        return_value=COMMITMENT,
     )
     @mock.patch.object(
-        BigQueryReservationServiceHook, "get_reservation", return_value=RESERVATION
+        BigQueryReservationServiceHook,
+        "_get_reservation",
+        return_value=RESERVATION,
     )
     @mock.patch.object(
-        BigQueryReservationServiceHook, "get_assignment", return_value=ASSIGNMENT
+        BigQueryReservationServiceHook,
+        "_get_assignment",
+        return_value=ASSIGNMENT,
     )
     @mock.patch(
-        "airflow_provider_bigquery_reservation.hooks.bigquery_reservation.BigQueryReservationServiceHook"
+        "airflow_provider_bigquery_reservation.hooks."
+        + "bigquery_reservation.BigQueryReservationServiceHook"
     )
     def test_execute(
         self,
@@ -100,17 +106,22 @@ class TestBigQueryReservationCreateOperator:
 
     @mock.patch("airflow.models.baseoperator.BaseOperator.on_kill")
     def test_on_kill_hook_none(self, on_kill_mock):
-        assert self.operator.on_kill() == None
+        assert self.operator.on_kill() is None
 
     @mock.patch("airflow.models.baseoperator.BaseOperator.on_kill")
     @mock.patch(
-        "airflow_provider_bigquery_reservation.hooks.bigquery_reservation.BigQueryReservationServiceHook.delete_commitment_reservation_and_assignment"
+        "airflow_provider_bigquery_reservation.hooks."
+        + "bigquery_reservation.BigQueryReservationServiceHook.delete_commitment_reservation_and_assignment"
     )
     @mock.patch(
-        "airflow_provider_bigquery_reservation.hooks.bigquery_reservation.BigQueryReservationServiceHook"
+        "airflow_provider_bigquery_reservation.hooks."
+        + "bigquery_reservation.BigQueryReservationServiceHook"
     )
     def test_on_kill_hook(
-        self, hook_mock, delete_commitment_reservation_and_assignment_mock, on_kill_mock
+        self,
+        hook_mock,
+        delete_commitment_reservation_and_assignment_mock,
+        on_kill_mock,
     ):
         hook_mock.commitment = COMMITMENT
         hook_mock.reservation = RESERVATION
@@ -132,10 +143,12 @@ class TestBigQueryReservationCreateOperator:
 class TestBigQueryReservationDeleteOperator:
     @mock.patch("airflow.models.connection.Connection.get_connection_from_secrets")
     @mock.patch(
-        "airflow_provider_bigquery_reservation.hooks.bigquery_reservation.BigQueryReservationServiceHook"
+        "airflow_provider_bigquery_reservation.hooks."
+        + "bigquery_reservation.BigQueryReservationServiceHook"
     )
     @mock.patch(
-        "airflow_provider_bigquery_reservation.hooks.bigquery_reservation.BigQueryReservationServiceHook.delete_commitment_reservation_and_assignment"
+        "airflow_provider_bigquery_reservation.hooks."
+        + "bigquery_reservation.BigQueryReservationServiceHook.delete_commitment_reservation_and_assignment"
     )
     def test_execute_with_resources_name(
         self,
@@ -163,10 +176,12 @@ class TestBigQueryReservationDeleteOperator:
 
     @mock.patch("airflow.models.connection.Connection.get_connection_from_secrets")
     @mock.patch(
-        "airflow_provider_bigquery_reservation.hooks.bigquery_reservation.BigQueryReservationServiceHook"
+        "airflow_provider_bigquery_reservation.hooks."
+        + "bigquery_reservation.BigQueryReservationServiceHook"
     )
     @mock.patch(
-        "airflow_provider_bigquery_reservation.hooks.bigquery_reservation.BigQueryReservationServiceHook.delete_all_commitments"
+        "airflow_provider_bigquery_reservation.hooks."
+        + "bigquery_reservation.BigQueryReservationServiceHook.delete_all_commitments"
     )
     def test_execute_with_project(
         self,
@@ -191,10 +206,12 @@ class TestBigQueryReservationDeleteOperator:
 class TestBigQueryBiEngineReservationCreateOperator:
     @mock.patch("airflow.models.connection.Connection.get_connection_from_secrets")
     @mock.patch(
-        "airflow_provider_bigquery_reservation.hooks.bigquery_reservation.BigQueryReservationServiceHook"
+        "airflow_provider_bigquery_reservation.hooks."
+        + "bigquery_reservation.BigQueryReservationServiceHook"
     )
     @mock.patch(
-        "airflow_provider_bigquery_reservation.hooks.bigquery_reservation.BigQueryReservationServiceHook.create_bi_reservation"
+        "airflow_provider_bigquery_reservation.hooks."
+        + "bigquery_reservation.BigQueryReservationServiceHook.create_bi_reservation"
     )
     def test_execute(self, create_bi_reservation_mock, hook_mock, get_conn_mock):
         operator = BigQueryBiEngineReservationCreateOperator(
@@ -215,10 +232,12 @@ class TestBigQueryBiEngineReservationCreateOperator:
 class TestBigQueryBiEngineReservationDeleteOperatorTestCase:
     @mock.patch("airflow.models.connection.Connection.get_connection_from_secrets")
     @mock.patch(
-        "airflow_provider_bigquery_reservation.hooks.bigquery_reservation.BigQueryReservationServiceHook"
+        "airflow_provider_bigquery_reservation.hooks."
+        + "bigquery_reservation.BigQueryReservationServiceHook"
     )
     @mock.patch(
-        "airflow_provider_bigquery_reservation.hooks.bigquery_reservation.BigQueryReservationServiceHook.delete_bi_reservation"
+        "airflow_provider_bigquery_reservation.hooks."
+        + "bigquery_reservation.BigQueryReservationServiceHook.delete_bi_reservation"
     )
     def test_execute(self, delete_bi_reservation_mock, hook_mock, get_conn_mock):
         operator = BigQueryBiEngineReservationDeleteOperator(
