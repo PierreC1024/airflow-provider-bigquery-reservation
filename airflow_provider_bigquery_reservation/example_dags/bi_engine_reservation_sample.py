@@ -1,7 +1,7 @@
-""" A sample to show how the bigquery BI reservation could work
+"""A sample DAG to show how the BigQuery BI reservation could work.
+
 In this DAG, you reserve 100GB in BI engine between from 8am ato 7pm each working days.
 """
-
 import os
 
 from pendulum import datetime, Time
@@ -41,7 +41,6 @@ def bi_engine_reservation_sample():
     2. Wait the precise date
     3. Delete BI reservation
     """
-
     create_bi_engine_reservation = BigQueryBiEngineReservationCreateOperator(
         task_id="create_bi_engine_reservation",
     )

@@ -1,3 +1,8 @@
+"""A sample DAG to show how the BigQuery flex-slots reservation could work.
+
+In this DAG, you reserve 100 flex slots and assign on a project, then run a
+query on the slots reserved, then delete the reservation.
+"""
 import os
 
 from pendulum import datetime
@@ -31,7 +36,6 @@ def bigquery_reservation_sample():
     2. Run a query
     3. Delete commitment
     """
-
     create_reservation = BigQueryReservationCreateOperator(
         task_id="create_reservation",
     )

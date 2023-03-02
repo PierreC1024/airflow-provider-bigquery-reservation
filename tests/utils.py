@@ -1,4 +1,4 @@
-"""utils functions for mock"""
+"""utils functions for mock."""
 
 
 def mock_base_gcp_hook_no_default_project_id(
@@ -7,6 +7,7 @@ def mock_base_gcp_hook_no_default_project_id(
     delegate_to=None,
     impersonation_chain=None,
 ):
+    """Mock base gcp hook."""
     self.extras_list = {}
     self._conn = gcp_conn_id
     self.delegate_to = delegate_to
@@ -18,6 +19,8 @@ def mock_base_gcp_hook_no_default_project_id(
 
 
 class QueryJob:
+    """Query Job Mock."""
+
     def __init__(self, reservation_id: bool) -> None:
         id_ = "test" if reservation_id else None
         self._properties = {"statistics": {"reservation_id": id_}}

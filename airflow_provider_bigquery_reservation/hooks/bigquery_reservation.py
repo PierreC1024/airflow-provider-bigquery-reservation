@@ -33,6 +33,20 @@ from google.api_core import retry
 class BigQueryReservationServiceHook(GoogleBaseHook):
     """
     Hook for Google Bigquery Reservation API.
+
+    :param location: Location where the reservation is attached.
+    :param gcp_conn_id: The connection ID used to connect to Google Cloud.
+    :param delegate_to: The account to impersonate using domain-wide delegation of authority,
+        if any. For this to work, the service account making the request must have
+        domain-wide delegation enabled.
+    :param impersonation_chain: Optional service account to impersonate using short-term
+        credentials, or chained list of accounts required to get the access_token
+        of the last account in the list, which will be impersonated in the request.
+        If set as a string, the account must grant the originating account
+        the Service Account Token Creator IAM role.
+        If set as a sequence, the identities from the list must grant
+        Service Account Token Creator IAM role to the directly preceding identity, with first
+        account from the list granting this role to the originating account (templated).
     """
 
     conn_name_attr = "gcp_conn_id"
@@ -108,7 +122,9 @@ class BigQueryReservationServiceHook(GoogleBaseHook):
         logical_date: datetime.datetime,
     ) -> str:
         """
-        Generate a unique resource id matching google reservation requirements:
+        Generate a unique resource id matching google reservation requirements.
+
+        Requiremets:
             - 64 characters maximum
             - contains only letters and dashes
             - begins by a letter
@@ -163,7 +179,7 @@ class BigQueryReservationServiceHook(GoogleBaseHook):
 
     def list_capacity_commitments(self, parent: str) -> list[CapacityCommitment]:
         """
-        List the capacity commitments
+        List the capacity commitments.
 
         :param parent: Parent resource name e.g. `projects/myproject/locations/US`
         """
@@ -243,7 +259,7 @@ class BigQueryReservationServiceHook(GoogleBaseHook):
 
     def list_reservations(self, parent: str) -> list[Reservation]:
         """
-        List the reservations
+        List the reservations.
 
         :param parent: Parent resource name e.g. `projects/myproject/locations/US`
         """
@@ -325,7 +341,7 @@ class BigQueryReservationServiceHook(GoogleBaseHook):
 
     def list_assignments(self, parent: str) -> list[Assignment]:
         """
-        List the assignments
+        List the assignments.
 
         :param parent: Parent resource name e.g. `projects/myproject/locations/US/reservations/-`
         """
@@ -346,7 +362,9 @@ class BigQueryReservationServiceHook(GoogleBaseHook):
         self, parent: str, project_id: str, job_type: str
     ) -> Assignment | None:
         """
-        Search the assignment which matches with the conditions:
+        Search the assignment which matches with the specific conditions.
+
+        Conditions:
             - Assignee to the specified project_id
             - active state
             - the job type corresponding to the job type specified
@@ -395,7 +413,7 @@ class BigQueryReservationServiceHook(GoogleBaseHook):
 
     def create_bi_reservation(self, parent: str, size: int):
         """
-        Create BI Engine reservation
+        Create BI Engine reservation.
 
         :param parent: Parent resource name e.g. `projects/myproject/locations/US/biReservation
         :param size: Memory reservation size in Gigabyte
@@ -415,7 +433,7 @@ class BigQueryReservationServiceHook(GoogleBaseHook):
 
     def delete_bi_reservation(self, parent: str, size: int):
         """
-        Delete/Update BI Engine reservation with the specified memory size
+        Delete/Update BI Engine reservation with the specified memory size.
 
         :param parent: Parent resource name e.g. `projects/myproject/locations/US/biReservation
         :param size: Memory reservation size in Gigabyte
@@ -453,7 +471,6 @@ class BigQueryReservationServiceHook(GoogleBaseHook):
         :param location: BigQuery project
         :return: bool
         """
-
         dummy_query = """
             SELECT dummy
             FROM UNNEST([STRUCT(true as dummy)])
@@ -481,6 +498,7 @@ class BigQueryReservationServiceHook(GoogleBaseHook):
     ) -> None:
         """
         Create a commitment for a specific amount of slots.
+
         Attach this commitment to a specified project by creating a new reservation and assignment
         or updating the existing one corresponding to the project assignment.
         Wait the assignment has been attached to a query.
@@ -557,7 +575,9 @@ class BigQueryReservationServiceHook(GoogleBaseHook):
         assignment_name: str | None = None,
     ) -> None:
         """
-        If it exists, delete/update the following resources:
+        If it exists, delete/update the commitment, reservation and assignment resources.
+
+        It will delete/update:
         - a commitment for a specific amount of slots.
         - If the amount of slots deleted is lower than the reservation slots capacity,
         update the reservation to the corresponding slots otherwise delete reservation and assignment.

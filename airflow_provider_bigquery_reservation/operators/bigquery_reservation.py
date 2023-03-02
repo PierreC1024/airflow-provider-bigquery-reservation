@@ -17,8 +17,8 @@ bq_reservation_operator_color = "#9c5fff"
 class BigQueryReservationCreateOperator(BaseOperator):
     """
     Buy BigQuery slots and assign them to a GCP project.
-    This operator works in the following way:
 
+    This operator works in the following way:
     - create slots capacity commitment with the number of slots specified (increment of 100)
     - create or update (if an assignment on the specified project already exists) reservation
       with the number of slots specified.
@@ -84,6 +84,7 @@ class BigQueryReservationCreateOperator(BaseOperator):
         self.hook: BigQueryReservationServiceHook | None = None
 
     def execute(self, context: Any) -> None:
+        """Create a slot reservation."""
         self.hook = BigQueryReservationServiceHook(
             gcp_conn_id=self.gcp_conn_id,
             delegate_to=self.delegate_to,
@@ -116,6 +117,7 @@ class BigQueryReservationCreateOperator(BaseOperator):
         )
 
     def on_kill(self) -> None:
+        """Delete the reservation if task is cancelled."""
         super().on_kill()
         if self.hook is not None:
             commitment_name = (
@@ -204,6 +206,7 @@ class BigQueryReservationDeleteOperator(BaseOperator):
         self.hook: BigQueryHook | None = None
 
     def execute(self, context: Any):
+        """Delete a slot reservation."""
         hook = BigQueryReservationServiceHook(
             gcp_conn_id=self.gcp_conn_id,
             delegate_to=self.delegate_to,
@@ -286,6 +289,7 @@ class BigQueryBiEngineReservationCreateOperator(BaseOperator):
         self.hook: BigQueryHook | None = None
 
     def execute(self, context: Any) -> None:
+        """Create a BI Engine reservation."""
         parent = f"projects/{self.project_id}/locations/{self.location}/biReservation"
 
         hook = BigQueryReservationServiceHook(
@@ -352,6 +356,7 @@ class BigQueryBiEngineReservationDeleteOperator(BaseOperator):
         self.hook: BigQueryHook | None = None
 
     def execute(self, context: Any) -> None:
+        """Delete a BI Engine reservation."""
         parent = f"projects/{self.project_id}/locations/{self.location}/biReservation"
 
         hook = BigQueryReservationServiceHook(

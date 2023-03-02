@@ -2,6 +2,7 @@ from importlib.metadata import version
 
 
 def get_provider_info():
+    """Get provider information for Airflow."""
     return {
         "package-name": "airflow_provider_bigquery_reservation",
         "name": "Apache Airflow BigQuery Reservation Provider",
