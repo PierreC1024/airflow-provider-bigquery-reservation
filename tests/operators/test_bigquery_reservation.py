@@ -1,25 +1,19 @@
 import datetime
 from unittest import mock
 
-from google.cloud.bigquery_reservation_v1 import Assignment
-from google.cloud.bigquery_reservation_v1 import CapacityCommitment
-from google.cloud.bigquery_reservation_v1 import Reservation
-
 from airflow_provider_bigquery_reservation.operators.bigquery_reservation import (
     BigQueryBiEngineReservationCreateOperator,
-)
-from airflow_provider_bigquery_reservation.operators.bigquery_reservation import (
     BigQueryBiEngineReservationDeleteOperator,
-)
-from airflow_provider_bigquery_reservation.operators.bigquery_reservation import (
     BigQueryReservationCreateOperator,
-)
-from airflow_provider_bigquery_reservation.operators.bigquery_reservation import (
     BigQueryReservationDeleteOperator,
-)
-from airflow_provider_bigquery_reservation.operators.bigquery_reservation import (
     BigQueryReservationServiceHook,
 )
+from google.cloud.bigquery_reservation_v1 import (
+    Assignment,
+    CapacityCommitment,
+    Reservation,
+)
+
 
 # ToDo: Put all in a config file
 PROJECT_ID = "test"

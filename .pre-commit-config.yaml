@@ -6,10 +6,11 @@ repos:
     -   id: end-of-file-fixer
     -   id: trailing-whitespace
 
--   repo: https://github.com/asottile/reorder_python_imports
-    rev: v3.9.0
+-   repo: https://github.com/miki725/importanize/
+    rev: 'master'
     hooks:
-    -   id: reorder-python-imports
+    - id: importanize
+      args: [--verbose]
 
 -   repo: https://github.com/psf/black
     rev: 22.12.0

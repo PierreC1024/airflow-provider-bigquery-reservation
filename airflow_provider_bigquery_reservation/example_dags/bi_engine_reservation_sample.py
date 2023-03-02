@@ -6,15 +6,11 @@ import os
 
 from airflow.decorators import dag
 from airflow.sensors.time_sensor import TimeSensor
-from pendulum import datetime
-from pendulum import Time
-
 from airflow_provider_bigquery_reservation.operators.bigquery_reservation import (
     BigQueryBiEngineReservationCreateOperator,
-)
-from airflow_provider_bigquery_reservation.operators.bigquery_reservation import (
     BigQueryBiEngineReservationDeleteOperator,
 )
+from pendulum import Time, datetime
 
 
 start_time = Time(7, 0, 0)
