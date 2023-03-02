@@ -3,7 +3,6 @@ from __future__ import annotations
 from typing import Any, Sequence
 
 from airflow.models import BaseOperator
-from airflow.providers.google.cloud.hooks.bigquery import BigQueryHook
 from airflow_provider_bigquery_reservation.hooks.bigquery_reservation import (
     BigQueryReservationServiceHook,
 )
@@ -190,7 +189,6 @@ class BigQueryReservationDeleteOperator(BaseOperator):
         self.gcp_conn_id = gcp_conn_id
         self.impersonation_chain = impersonation_chain
         self.cancel_on_kill = cancel_on_kill
-        self.hook: BigQueryHook | None = None
 
     def execute(self, context: Any):
         """Delete a slot reservation."""
@@ -228,10 +226,11 @@ class BigQueryBiEngineReservationCreateOperator(BaseOperator):
     """
     Create or Update BI engine reservation.
 
-    :param project_id: Google Cloud Project where the reservation is attached.
-    :param location: Location where the reservation is attached.
-    :param size: Memory size to reserve (GB).
-    :param gcp_conn_id: Connection ID used to connect to Google Cloud.
+    :param location: The BI engine reservation location. (templated)
+    :param size: The BI Engine reservation memory size (GB). (templated)
+    :param project_id: (Optional) The name of the project where the reservation
+        will be attached from. (templated)
+    :param gcp_conn_id: (Optional) The connection ID used to connect to Google Cloud. (templated)
     :param impersonation_chain: Optional service account to impersonate using short-term
         credentials, or chained list of accounts required to get the access_token
         of the last account in the list, which will be impersonated in the request.
@@ -239,7 +238,7 @@ class BigQueryBiEngineReservationCreateOperator(BaseOperator):
         the Service Account Token Creator IAM role.
         If set as a sequence, the identities from the list must grant
         Service Account Token Creator IAM role to the directly preceding identity, with first
-        account from the list granting this role to the originating account (templated).
+        account from the list granting this role to the originating account. (templated)
     :param cancel_on_kill: Flag which indicates whether cancel the hook's job or not, when on_kill is called
     """
 
@@ -247,14 +246,15 @@ class BigQueryBiEngineReservationCreateOperator(BaseOperator):
         "project_id",
         "location",
         "size",
+        "gcp_conn_id",
+        "impersonation_chain",
     )
-    ui_color = bq_reservation_operator_color
 
     def __init__(
         self,
-        project_id: str | None,
         location: str,
         size: int,
+        project_id: str | None = None,
         gcp_conn_id: str = "google_cloud_default",
         impersonation_chain: str | Sequence[str] | None = None,
         cancel_on_kill: bool = True,
@@ -267,32 +267,26 @@ class BigQueryBiEngineReservationCreateOperator(BaseOperator):
         self.gcp_conn_id = gcp_conn_id
         self.impersonation_chain = impersonation_chain
         self.cancel_on_kill = cancel_on_kill
-        self.hook: BigQueryHook | None = None
 
     def execute(self, context: Any) -> None:
         """Create a BI Engine reservation."""
-        parent = f"projects/{self.project_id}/locations/{self.location}/biReservation"
-
         hook = BigQueryReservationServiceHook(
             gcp_conn_id=self.gcp_conn_id,
             impersonation_chain=self.impersonation_chain,
             location=self.location,
         )
 
-        hook.create_bi_reservation(
-            parent=parent,
-            size=self.size,
-        )
+        hook.create_bi_reservation(project_id=self.project_id, size=self.size)
 
 
 class BigQueryBiEngineReservationDeleteOperator(BaseOperator):
     """
     Delete or Update BI engine reservation.
 
-    :param project_id: Google Cloud Project where the reservation is attached.
-    :param location: Location where the reservation is attached.
-    :param size: Memory size to reserve (GB).
-    :param gcp_conn_id: The connection ID used to connect to Google Cloud.
+    :param project_id: Google Cloud Project where the reservation is attached. (templated)
+    :param location: Location where the reservation is attached. (templated)
+    :param size: (Optional) BI Engine reservation size to delete (GB).
+    :param gcp_conn_id: The connection ID used to connect to Google Cloud. (templated)
     :param impersonation_chain: Optional service account to impersonate using short-term
         credentials, or chained list of accounts required to get the access_token
         of the last account in the list, which will be impersonated in the request.
@@ -300,7 +294,7 @@ class BigQueryBiEngineReservationDeleteOperator(BaseOperator):
         the Service Account Token Creator IAM role.
         If set as a sequence, the identities from the list must grant
         Service Account Token Creator IAM role to the directly preceding identity, with first
-        account from the list granting this role to the originating account (templated).
+        account from the list granting this role to the originating account. (templated)
     :param cancel_on_kill: Flag which indicates whether cancel the hook's job or not, when on_kill is called
     """
 
@@ -308,14 +302,15 @@ class BigQueryBiEngineReservationDeleteOperator(BaseOperator):
         "project_id",
         "location",
         "size",
+        "gcp_conn_id",
+        "impersonation_chain",
     )
-    ui_color = bq_reservation_operator_color
 
     def __init__(
         self,
         project_id: str | None,
         location: str,
-        size: int,
+        size: int | None = None,
         gcp_conn_id: str = "google_cloud_default",
         impersonation_chain: str | Sequence[str] | None = None,
         cancel_on_kill: bool = True,
@@ -328,12 +323,9 @@ class BigQueryBiEngineReservationDeleteOperator(BaseOperator):
         self.gcp_conn_id = gcp_conn_id
         self.impersonation_chain = impersonation_chain
         self.cancel_on_kill = cancel_on_kill
-        self.hook: BigQueryHook | None = None
 
     def execute(self, context: Any) -> None:
-        """Delete a BI Engine reservation."""
-        parent = f"projects/{self.project_id}/locations/{self.location}/biReservation"
-
+        """Delete BI Engine reservation."""
         hook = BigQueryReservationServiceHook(
             gcp_conn_id=self.gcp_conn_id,
             impersonation_chain=self.impersonation_chain,
@@ -341,6 +333,6 @@ class BigQueryBiEngineReservationDeleteOperator(BaseOperator):
         )
 
         hook.delete_bi_reservation(
-            parent=parent,
+            project_id=self.project_id,
             size=self.size,
         )

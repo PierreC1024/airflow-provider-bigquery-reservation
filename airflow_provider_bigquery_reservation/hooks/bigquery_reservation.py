@@ -399,41 +399,55 @@ class BigQueryReservationServiceHook(GoogleBaseHook):
             self.log.error(e)
             raise AirflowException(f"Failed to delete {name} reservation.")
 
-    def create_bi_reservation(self, parent: str, size: int):
+    @GoogleBaseHook.fallback_to_default_project_id
+    def create_bi_reservation(self, project_id: str, size: int) -> None:
         """
         Create BI Engine reservation.
 
-        :param parent: Parent resource name e.g. `projects/myproject/locations/US/biReservation
-        :param size: Memory reservation size in Gigabyte
+        :param project_id: The name of the project where we want to create/update
+            the BI Engine reservation.
+        :param size: The BI Engine reservation size in Gb.
         """
+        parent = f"projects/{project_id}/locations/{self.location}/biReservation"
         client = self.get_client()
         size = self._convert_gb_to_kb(value=size)
 
         try:
             bi_reservation = client.get_bi_reservation(name=parent)
-
-            bi_reservation.size = size
+            bi_reservation.size = size + bi_reservation.size
 
             client.update_bi_reservation(bi_reservation=bi_reservation)
+
+            self.log.info(
+                "BI Engine reservation {parent} have been updated to {bi_reservation.size}Kb."
+            )
         except Exception as e:
             self.log.error(e)
             raise AirflowException(f"Failed to create BI engine reservation of {size}.")
 
-    def delete_bi_reservation(self, parent: str, size: int):
+    @GoogleBaseHook.fallback_to_default_project_id
+    def delete_bi_reservation(self, project_id: str, size: int | None = None) -> None:
         """
         Delete/Update BI Engine reservation with the specified memory size.
 
-        :param parent: Parent resource name e.g. `projects/myproject/locations/US/biReservation
-        :param size: Memory reservation size in Gigabyte
+        :param project_id: The name of the project where we want to delete/update
+            the BI Engine reservation.
+        :param size: The BI Engine reservation size in Gb.
         """
+        parent = f"projects/{project_id}/locations/{self.location}/biReservation"
         client = self.get_client()
         try:
-            size = self._convert_gb_to_kb(size)
             bi_reservation = client.get_bi_reservation(name=parent)
-
-            bi_reservation.size = max(bi_reservation.size - size, 0)
+            if size is not None:
+                size = self._convert_gb_to_kb(size)
+                bi_reservation.size = max(bi_reservation.size - size, 0)
+            else:
+                bi_reservation.size = 0
 
             client.update_bi_reservation(bi_reservation=bi_reservation)
+            self.log.info(
+                "BI Engine reservation {parent} have been updated to {bi_reservation.size}Kb."
+            )
         except Exception as e:
             self.log.error(e)
             raise AirflowException(f"Failed to delete BI engine reservation of {size}.")
