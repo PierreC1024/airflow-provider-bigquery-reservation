@@ -15,6 +15,9 @@
 [![codecov](https://codecov.io/gh/PierreC1024/airflow-provider-bigquery-reservation/branch/main/graph/badge.svg?token=VQ18VBAGNO)](https://codecov.io/gh/PierreC1024/airflow-provider-bigquery-reservation)
 ![Github Action Test](https://github.com/PierreC1024/airflow-provider-bigquery-reservation/actions/workflows/test.yaml/badge.svg)
 
+> **Warning**
+> This package is a pre-released of the official apache-airflow-providers-google package. All of these operators will be integrated to the official package, soon.
+
 This repository provides an Airflow provider based on BigQuery reservation API.
 
 Operators available:
