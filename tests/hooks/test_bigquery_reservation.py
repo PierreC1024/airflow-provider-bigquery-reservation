@@ -29,7 +29,6 @@ LOCATION = "US"
 SLOTS = 100
 SLOTS_ALL = SLOTS + 100
 SIZE = 100
-SIZE_KO = 107374182400
 COMMITMENT_DURATION = "FLEX"
 PARENT = f"projects/{PROJECT_ID}/locations/{LOCATION}"
 RESOURCE_NAME = "test"
@@ -39,6 +38,9 @@ STATE = "ACTIVE"
 DAG_ID = "dag"
 TASK_ID = "task"
 LOGICAL_DATE = datetime.datetime.strptime("2023-01-01", "%Y-%m-%d")
+CONSTANT_GO_TO_KO = 1073741824
+SIZE_KO = SIZE * CONSTANT_GO_TO_KO
+PARENT_BI_RESERVATION = f"{PARENT}/biReservation"
 
 
 @pytest.fixture()
@@ -473,89 +475,139 @@ class TestBigQueryReservationHook:
 
     # Create BI Reservation
     @mock.patch(
-        "airflow_provider_bigquery_reservation.hooks."
-        + "bigquery_reservation.BigQueryReservationServiceHook.get_client"
+        "airflow_provider_bigquery_reservation.hooks.bigquery_reservation.BigQueryReservationServiceHook.get_client"
     )
-    def test_create_bi_reservation_success(self, client_mock):
+    def test_create_bi_reservation_existing_reservation_success(self, client_mock):
+        requested_size_gb = SIZE
+        initial_size = SIZE_KO
+        expected_size = initial_size + requested_size_gb * CONSTANT_GO_TO_KO
+
         client_mock.return_value.get_bi_reservation.return_value = BiReservation(
-            name=RESOURCE_NAME, size=SIZE_KO
+            name=PARENT_BI_RESERVATION, size=initial_size
         )
-        self.hook.create_bi_reservation(PARENT, SIZE)
-        client_mock.return_value.get_bi_reservation.assert_called_once_with(name=PARENT)
+        self.hook.create_bi_reservation(project_id=PROJECT_ID, size=requested_size_gb)
+        client_mock.return_value.get_bi_reservation.assert_called_once_with(
+            name=PARENT_BI_RESERVATION
+        )
         client_mock.return_value.update_bi_reservation.assert_called_once_with(
-            bi_reservation=BiReservation(name=RESOURCE_NAME, size=SIZE_KO)
+            bi_reservation=BiReservation(name=PARENT_BI_RESERVATION, size=expected_size)
+        )
+
+    @mock.patch(
+        "airflow_provider_bigquery_reservation.hooks.bigquery_reservation.BigQueryReservationServiceHook.get_client"
+    )
+    def test_create_bi_reservation_none_existing_reservation_success(self, client_mock):
+        requested_size_gb = SIZE
+        initial_size = 0
+        expected_size = initial_size + requested_size_gb * CONSTANT_GO_TO_KO
+
+        client_mock.return_value.get_bi_reservation.return_value = BiReservation(
+            name=PARENT_BI_RESERVATION, size=initial_size
+        )
+        self.hook.create_bi_reservation(project_id=PROJECT_ID, size=requested_size_gb)
+        client_mock.return_value.get_bi_reservation.assert_called_once_with(
+            name=PARENT_BI_RESERVATION
+        )
+
+        client_mock.return_value.update_bi_reservation.assert_called_once_with(
+            bi_reservation=BiReservation(name=PARENT_BI_RESERVATION, size=expected_size)
         )
 
     @mock.patch.object(
-        ReservationServiceClient,
-        "get_bi_reservation",
-        side_effect=Exception("Test"),
+        ReservationServiceClient, "get_bi_reservation", side_effect=Exception("Test")
     )
     def test_create_bi_reservation_get_failure(self, call_failure):
         with pytest.raises(AirflowException):
-            self.hook.create_bi_reservation(PARENT, SIZE)
+            self.hook.create_bi_reservation(project_id=PROJECT_ID, size=SIZE)
 
     @mock.patch.object(ReservationServiceClient, "get_bi_reservation")
     @mock.patch.object(
-        ReservationServiceClient,
-        "update_bi_reservation",
-        side_effect=Exception("Test"),
+        ReservationServiceClient, "update_bi_reservation", side_effect=Exception("Test")
     )
     def test_create_bi_reservation_update_failure(
         self, call_failure, get_bi_reservation_mock
     ):
         with pytest.raises(AirflowException):
-            self.hook.create_bi_reservation(PARENT, SIZE)
+            self.hook.create_bi_reservation(project_id=PROJECT_ID, size=SIZE)
 
     # Delete BI Reservation
     @mock.patch(
-        "airflow_provider_bigquery_reservation.hooks."
-        + "bigquery_reservation.BigQueryReservationServiceHook.get_client"
+        "airflow_provider_bigquery_reservation.hooks.bigquery_reservation.BigQueryReservationServiceHook.get_client"
     )
-    def test_delete_bi_reservation_success_update_to_0(self, client_mock):
+    def test_delete_bi_reservation_size_none_success(self, client_mock):
+        initial_size = SIZE_KO
+        expected_size = 0
         client_mock.return_value.get_bi_reservation.return_value = BiReservation(
-            name=RESOURCE_NAME, size=SIZE_KO
+            name=PARENT_BI_RESERVATION, size=initial_size
         )
-        self.hook.delete_bi_reservation(PARENT, SIZE)
-        client_mock.return_value.get_bi_reservation.assert_called_once_with(name=PARENT)
+        self.hook.delete_bi_reservation(project_id=PROJECT_ID)
+        client_mock.return_value.get_bi_reservation.assert_called_once_with(
+            name=PARENT_BI_RESERVATION
+        )
         client_mock.return_value.update_bi_reservation.assert_called_once_with(
-            bi_reservation=BiReservation(name=RESOURCE_NAME, size=0)
+            bi_reservation=BiReservation(name=PARENT_BI_RESERVATION, size=expected_size)
         )
 
     @mock.patch(
-        "airflow_provider_bigquery_reservation.hooks."
-        + "bigquery_reservation.BigQueryReservationServiceHook.get_client"
+        "airflow_provider_bigquery_reservation.hooks.bigquery_reservation.BigQueryReservationServiceHook.get_client"
     )
-    def test_delete_bi_reservation_success_update_non_negative(self, client_mock):
+    def test_delete_bi_reservation_size_filled_update_non_negative_success(
+        self, client_mock
+    ):
+        initial_size = 100 * CONSTANT_GO_TO_KO
+        requeted_deleted_size_gb = 50
+        expected_size = initial_size - requeted_deleted_size_gb * CONSTANT_GO_TO_KO
         client_mock.return_value.get_bi_reservation.return_value = BiReservation(
-            name=RESOURCE_NAME, size=SIZE_KO - 10000
+            name=PARENT_BI_RESERVATION, size=initial_size
         )
-        self.hook.delete_bi_reservation(PARENT, SIZE)
-        client_mock.return_value.get_bi_reservation.assert_called_once_with(name=PARENT)
+        self.hook.delete_bi_reservation(
+            project_id=PROJECT_ID, size=requeted_deleted_size_gb
+        )
+        client_mock.return_value.get_bi_reservation.assert_called_once_with(
+            name=PARENT_BI_RESERVATION
+        )
         client_mock.return_value.update_bi_reservation.assert_called_once_with(
-            bi_reservation=BiReservation(name=RESOURCE_NAME, size=0)
+            bi_reservation=BiReservation(name=PARENT_BI_RESERVATION, size=expected_size)
+        )
+
+    @mock.patch(
+        "airflow_provider_bigquery_reservation.hooks.bigquery_reservation.BigQueryReservationServiceHook.get_client"
+    )
+    def test_delete_bi_reservation_size_filled_update_negative_success(
+        self, client_mock
+    ):
+        initial_size = 100 * CONSTANT_GO_TO_KO
+        requeted_deleted_size_gb = 200
+        expected_size = 0
+        client_mock.return_value.get_bi_reservation.return_value = BiReservation(
+            name=PARENT_BI_RESERVATION, size=initial_size
+        )
+        self.hook.delete_bi_reservation(
+            project_id=PROJECT_ID, size=requeted_deleted_size_gb
+        )
+        client_mock.return_value.get_bi_reservation.assert_called_once_with(
+            name=PARENT_BI_RESERVATION
+        )
+        client_mock.return_value.update_bi_reservation.assert_called_once_with(
+            bi_reservation=BiReservation(name=PARENT_BI_RESERVATION, size=expected_size)
         )
 
     @mock.patch.object(
-        ReservationServiceClient,
-        "get_bi_reservation",
-        side_effect=Exception("Test"),
+        ReservationServiceClient, "get_bi_reservation", side_effect=Exception("Test")
     )
     def test_delete_bi_reservation_get_failure(self, call_failure):
         with pytest.raises(AirflowException):
-            self.hook.delete_bi_reservation(PARENT, SIZE)
+            self.hook.delete_bi_reservation(project_id=PROJECT_ID, size=SIZE)
 
     @mock.patch.object(ReservationServiceClient, "get_bi_reservation")
     @mock.patch.object(
-        ReservationServiceClient,
-        "update_bi_reservation",
-        side_effect=Exception("Test"),
+        ReservationServiceClient, "update_bi_reservation", side_effect=Exception("Test")
     )
     def test_delete_bi_reservation_update_failure(
         self, call_failure, get_bi_reservation_mock
     ):
         with pytest.raises(AirflowException):
-            self.hook.delete_bi_reservation(PARENT, SIZE)
+            self.hook.delete_bi_reservation(project_id=PROJECT_ID, size=SIZE)
 
     # Create Commitment Reservation And Assignment
     @mock.patch.object(
