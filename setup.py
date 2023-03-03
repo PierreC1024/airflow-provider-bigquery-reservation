@@ -1,13 +1,17 @@
 """Package setup."""
 from setuptools import find_packages, setup
 
+with open("README.md", "r") as fh:
+    long_description = fh.read()
 
-__version__ = "0.2.0"
+__version__ = "1.0.0"
 
 setup(
     name="airflow-provider-bigquery-reservation",
     version=__version__,
+    long_description=long_description,
     description="An Apache Airflow provider concerning BigQuery reservation.",
+    long_description_content_type="text/markdown",
     entry_points={
         "apache_airflow_provider": [
             "provider_info=airflow_provider_bigquery_reservation.__init__:get_provider_info"
