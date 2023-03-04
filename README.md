@@ -18,15 +18,25 @@
 > **Warning**
 > This package is a pre-released of the official apache-airflow-providers-google package. All of these operators will be integrated to the official package, soon.
 
-This repository provides an Airflow provider based on BigQuery reservation API.
+This repository provides an Apache Airflow provider based on [BigQuery Reservation API](https://cloud.google.com/python/docs/reference/bigqueryreservation/latest).
 
-Operators available:
-* `BigQueryReservationCreateOperator`: Buy BigQuery slots (commitment) and assign them to a GCP project (reserve and assign).
-* `BigQueryReservationDeleteOperator`: Delete BigQuery reservation and remove associated ressources.
-* `BigQueryBiEngineReservationCreateOperator`: Create or Update BI engine reservation.
-* `BigQueryBiEngineReservationDeleteOperator`: Delete or Update BI engine reservation.
+## Airflow Operators
+* `BigQueryReservationCreateOperator`: Buy BigQuery slots (commitments) and assign them to a GCP project (reserve and assign).
+* `BigQueryReservationDeleteOperator`: Delete BigQuery commitments and remove associated ressources (rservation and assignment).
+* `BigQueryBiEngineReservationCreateOperator`: Create or Update a BI engine reservation.
+* `BigQueryBiEngineReservationDeleteOperator`: Delete or Update a BI engine reservation.
 
-You could find DAG sample [here](https://github.com/PierreC1024/airflow-provider-bigquery-reservation/tree/main/airflow_provider_bigquery_reservation/example_dags).
+You could find DAG samples [here](https://github.com/PierreC1024/airflow-provider-bigquery-reservation/tree/main/airflow_provider_bigquery_reservation/example_dags).
+
+### Requirements
+
+* A [Google Cloud connection](https://airflow.apache.org/docs/apache-airflow-providers-google/stable/connections/gcp.html) has to be defined.
+By default, all hooks and operators use `google_cloud_default`.
+* This connection requires the following roles on the Google Cloud project(s) used in these operators:
+  * [BigQuery Resource Admin](https://cloud.google.com/iam/docs/understanding-roles#bigquery.resourceAdmin)
+  * [BigQuery Job User](https://cloud.google.com/iam/docs/understanding-roles#bigquery.jobUser) - *Required for `BigQueryReservationCreateOperator` because of the reservation attachment check.*
+
+*Defining a new dedicated connection and custom GCP role could be good practices to respect the principle of least privilege.*
 
 ## How to install
 
