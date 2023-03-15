@@ -22,7 +22,7 @@ setup(
     install_requires=[
         "apache-airflow>=2.3.0",
         "google-cloud-bigquery-reservation>=1.0.0",
-        "google-cloud-bigquery>=3.0.0",
+        "google-cloud-bigquery>=2.0.0",
     ],
     setup_requires=["setuptools", "wheel"],
     author="Pierre Cardona",
