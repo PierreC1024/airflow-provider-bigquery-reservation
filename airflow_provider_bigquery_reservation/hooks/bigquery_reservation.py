@@ -130,6 +130,7 @@ class BigQueryReservationServiceHook(GoogleBaseHook):
         parent: str,
         slots: int,
         commitments_duration: str,
+        name: str,
     ) -> CapacityCommitment:
         """
         Create capacity commitment.
@@ -137,15 +138,19 @@ class BigQueryReservationServiceHook(GoogleBaseHook):
         :param parent: Parent resource name e.g. `projects/myproject/locations/US`
         :param slots: Slots number
         :param commitments_duration: Commitment minimum durations (FLEX, MONTH, YEAR).
+        :param name: capacity commitment name
         """
         client = self.get_client()
 
         try:
             self.commitment = client.create_capacity_commitment(
-                parent=parent,
-                capacity_commitment=CapacityCommitment(
-                    plan=commitments_duration, slot_count=slots
-                ),
+                request={
+                    "parent": parent,
+                    "capacity_commitment": CapacityCommitment(
+                        plan=commitments_duration, slot_count=slots
+                    ),
+                    "capacity_commitment_id": name,
+                }
             )
             return self.commitment
 
@@ -509,10 +514,14 @@ class BigQueryReservationServiceHook(GoogleBaseHook):
 
         self._verify_slots_conditions(slots=slots)
         parent = f"projects/{reservation_project_id}/locations/{self.location}"
+        resource_name = self.format_resource_id(f"airflow_{project_id}_assignement")
 
         try:
             capacity_commitment = self.create_capacity_commitment(
-                parent=parent, slots=slots, commitments_duration=commitments_duration
+                parent=parent,
+                slots=slots,
+                commitments_duration=commitments_duration,
+                name=resource_name,
             )
 
             # Cannot create multiple assignments to the same project on the same job_type.
@@ -530,11 +539,8 @@ class BigQueryReservationServiceHook(GoogleBaseHook):
                     name=current_reservation.name, slots=new_slots_reservation
                 )
             else:
-                reservation_id = self.format_resource_id(
-                    f"airflow_{project_id}_assignement"
-                )
                 reservation = self.create_reservation(
-                    parent=parent, reservation_id=reservation_id, slots=slots
+                    parent=parent, reservation_id=resource_name, slots=slots
                 )
                 assignment = self.create_assignment(
                     parent=reservation.name,

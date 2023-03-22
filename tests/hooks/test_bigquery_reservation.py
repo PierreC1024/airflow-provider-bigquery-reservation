@@ -99,12 +99,17 @@ class TestBigQueryReservationHook:
         + "bigquery_reservation.BigQueryReservationServiceHook.get_client"
     )
     def test_create_capacity_commitment_success(self, client_mock):
-        self.hook.create_capacity_commitment(PARENT, SLOTS, COMMITMENT_DURATION)
+        self.hook.create_capacity_commitment(
+            PARENT, SLOTS, COMMITMENT_DURATION, RESOURCE_ID
+        )
         client_mock.return_value.create_capacity_commitment.assert_called_once_with(
-            parent=PARENT,
-            capacity_commitment=CapacityCommitment(
-                plan=COMMITMENT_DURATION, slot_count=SLOTS
-            ),
+            request={
+                "parent": PARENT,
+                "capacity_commitment": CapacityCommitment(
+                    plan=COMMITMENT_DURATION, slot_count=SLOTS
+                ),
+                "capacity_commitment_id": RESOURCE_ID,
+            }
         )
 
     @mock.patch.object(
@@ -114,7 +119,9 @@ class TestBigQueryReservationHook:
     )
     def test_create_capacity_commitment_failure(self, call_failure):
         with pytest.raises(AirflowException):
-            self.hook.create_capacity_commitment(PARENT, SLOTS, COMMITMENT_DURATION)
+            self.hook.create_capacity_commitment(
+                PARENT, SLOTS, COMMITMENT_DURATION, RESOURCE_NAME
+            )
 
     # List Capacity Commitments
     @mock.patch(
@@ -653,6 +660,7 @@ class TestBigQueryReservationHook:
             parent=parent,
             slots=SLOTS,
             commitments_duration=COMMITMENT_DURATION,
+            name=RESOURCE_NAME,
         )
 
         get_reservation_mock.assert_called_once_with(name=RESOURCE_NAME)
@@ -709,6 +717,7 @@ class TestBigQueryReservationHook:
             parent=parent,
             slots=SLOTS,
             commitments_duration=COMMITMENT_DURATION,
+            name=RESOURCE_NAME,
         )
 
         create_reservation_mock.assert_called_once_with(
