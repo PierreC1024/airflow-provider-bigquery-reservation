@@ -103,12 +103,7 @@ class BigQueryReservationServiceHook(GoogleBaseHook):
         """
         return value * 1073741824
 
-    def generate_resource_id(
-        self,
-        dag_id: str,
-        task_id: str,
-        logical_date: datetime.datetime,
-    ) -> str:
+    def format_resource_id(self, resource_id: str) -> str:
         """
         Generate a unique resource id matching google reservation requirements.
 
@@ -118,15 +113,11 @@ class BigQueryReservationServiceHook(GoogleBaseHook):
             - begins by a letter
             - not finish by a dash
 
-        :param dag_id: Airflow DAG id
-        :param task_id: Airflow task id
-        :param logical_date: Logical execution date
+        :param resource_id: input resource_id
 
         :return: a resource id
         """
         uniqueness_suffix = hashlib.md5(str(uuid.uuid4()).encode()).hexdigest()[:5]
-        exec_date = logical_date.isoformat()
-        resource_id = f"airflow__{dag_id}_{task_id}__{exec_date}"
         resource_id = (
             re.sub(r"[:\_+.]", "-", resource_id.lower())[:59]
             + f"-{uniqueness_suffix[:4]}"
@@ -492,11 +483,11 @@ class BigQueryReservationServiceHook(GoogleBaseHook):
     @GoogleBaseHook.fallback_to_default_project_id
     def create_commitment_reservation_and_assignment(
         self,
-        resource_id: str,
         slots: int,
         assignment_job_type: str,
         commitments_duration: str,
         project_id: str = PROVIDE_PROJECT_ID,
+        reservation_project_id: str | None = None,
     ) -> None:
         """
         Create a commitment for a specific amount of slots.
@@ -506,14 +497,18 @@ class BigQueryReservationServiceHook(GoogleBaseHook):
         Wait the assignment has been attached to a query.
         See https://cloud.google.com/bigquery/docs/reservations-assignments
 
-        :param resource_id: Resource id
         :param slots: Slots number to purchase and assign
         :param assignment_job_type: Type of job for assignment
         :param commitments_duration: Commitment minimum durations (FLEX, MONTH, YEAR).
         :param project_id: GCP project where you wich to assign slots
         """
+        reservation_project_id = reservation_project_id or project_id
+        self.log.info(
+            f"The reservation will be take on the GCP project: {reservation_project_id}"
+        )
+
         self._verify_slots_conditions(slots=slots)
-        parent = f"projects/{project_id}/locations/{self.location}"
+        parent = f"projects/{reservation_project_id}/locations/{self.location}"
 
         try:
             capacity_commitment = self.create_capacity_commitment(
@@ -535,8 +530,11 @@ class BigQueryReservationServiceHook(GoogleBaseHook):
                     name=current_reservation.name, slots=new_slots_reservation
                 )
             else:
+                reservation_id = self.format_resource_id(
+                    f"airflow_{project_id}_assignement"
+                )
                 reservation = self.create_reservation(
-                    parent=parent, reservation_id=resource_id, slots=slots
+                    parent=parent, reservation_id=reservation_id, slots=slots
                 )
                 assignment = self.create_assignment(
                     parent=reservation.name,

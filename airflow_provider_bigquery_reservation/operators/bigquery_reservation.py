@@ -27,7 +27,8 @@ class BigQueryReservationCreateOperator(BaseOperator):
         https://cloud.google.com/bigquery/docs/reference/reservations
 
 
-    :param project_id: Google Cloud Project where the reservation is attached.
+    :param project_id: Google Cloud Project where the reservation is assigned.
+    :param reservation_project_id: Google Cloud Project where the reservation is set.
     :param location: Location where the reservation is attached.
     :param slots_provisioning: Slots number to provision. Slots can only be reserved in increments of 100.
     :param commitments_duration: Commitment minimum durations i.e. one minute (FLEX, default), one month (MONTH) or one year (YEAR).
@@ -46,6 +47,7 @@ class BigQueryReservationCreateOperator(BaseOperator):
 
     template_fields: Sequence[str] = (
         "project_id",
+        "reservation_project_id",
         "location",
         "slots_provisioning",
         "commitments_duration",
@@ -57,6 +59,7 @@ class BigQueryReservationCreateOperator(BaseOperator):
         project_id: str | None,
         location: str,
         slots_provisioning: int,
+        reservation_project_id: str | None = None,
         commitments_duration: str = "FLEX",
         assignment_job_type: str = "QUERY",
         gcp_conn_id: str = "google_cloud_default",
@@ -66,6 +69,7 @@ class BigQueryReservationCreateOperator(BaseOperator):
     ) -> None:
         super().__init__(**kwargs)
         self.project_id = project_id
+        self.reservation_project_id = reservation_project_id
         self.location = location
         self.slots_provisioning = slots_provisioning
         self.commitments_duration = commitments_duration
@@ -83,18 +87,12 @@ class BigQueryReservationCreateOperator(BaseOperator):
             location=self.location,
         )
 
-        resource_id = self.hook.generate_resource_id(
-            dag_id=self.dag_id,
-            task_id=self.task_id,
-            logical_date=context["logical_date"],
-        )
-
         self.hook.create_commitment_reservation_and_assignment(
-            resource_id=resource_id,
             slots=self.slots_provisioning,
             assignment_job_type=self.assignment_job_type,
             commitments_duration=self.commitments_duration,
             project_id=self.project_id,
+            reservation_project_id=self.reservation_project_id,
         )
 
         context["ti"].xcom_push(
@@ -120,12 +118,13 @@ class BigQueryReservationCreateOperator(BaseOperator):
             assignment_name = (
                 self.hook.assignment.name if self.hook.assignment else None
             )
-            self.hook.delete_commitment_reservation_and_assignment(
-                commitment_name=commitment_name,
-                reservation_name=reservation_name,
-                assignment_name=assignment_name,
-                slots=self.slots_provisioning,
-            )
+            if commitment_name:
+                self.hook.delete_commitment_reservation_and_assignment(
+                    commitment_name=commitment_name,
+                    reservation_name=reservation_name,
+                    assignment_name=assignment_name,
+                    slots=self.slots_provisioning,
+                )
 
 
 class BigQueryReservationDeleteOperator(BaseOperator):
@@ -137,7 +136,8 @@ class BigQueryReservationDeleteOperator(BaseOperator):
 
 
     :param location: Location where the reservation is attached.
-    :param project_id: Google Cloud Project where the reservation is attached.
+    :param project_id: Google Cloud Project where the reservation is assigned.
+    :param reservation_project_id: Google Cloud Project where the reservation is set.
     :param slots_provisioning: Slots number to delete.
     :param commitment_name: Commitment name
             e.g. `projects/myproject/locations/US/commitments/test`.
@@ -159,6 +159,8 @@ class BigQueryReservationDeleteOperator(BaseOperator):
 
     template_fields: Sequence[str] = (
         "location",
+        "project_id",
+        "reservation_project_id",
         "slots_provisioning",
         "commitment_name",
         "reservation_name",
@@ -170,6 +172,7 @@ class BigQueryReservationDeleteOperator(BaseOperator):
         self,
         location: str,
         project_id: str | None = None,
+        reservation_project_id: str | None = None,
         slots_provisioning: int | None = None,
         commitment_name: str | None = None,
         reservation_name: str | None = None,
@@ -182,6 +185,7 @@ class BigQueryReservationDeleteOperator(BaseOperator):
         super().__init__(**kwargs)
         self.location = location
         self.project_id = project_id
+        self.reservation_project_id = reservation_project_id
         self.slots_provisioning = slots_provisioning
         self.commitment_name = commitment_name
         self.reservation_name = reservation_name
@@ -216,6 +220,7 @@ class BigQueryReservationDeleteOperator(BaseOperator):
                 "Delete all reservations on"
                 f" projects/{self.project_id}/locations/{self.location}"
             )
+            # ToDo: Add project_reservation
             hook.delete_all_commitments(
                 project_id=self.project_id,
                 location=self.location,
