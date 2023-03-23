@@ -662,4 +662,49 @@ class BigQueryReservationServiceHook(GoogleBaseHook):
 
         except Exception as e:
             self.log.error(e)
-            raise AirflowException("Failed to delete commitments in {parent}")
+            raise AirflowException(f"Failed to delete commitments in {parent}")
+
+    def delete_commitments_assignment_associated(
+        self, project_id: str, location: str, reservation_project_id: str
+    ) -> None:
+        """
+        Delete all commitments, reservation and assignment associated to a specific project assignment.
+
+        :param project_id: Reservation project assignation
+        :param location: Commitment location
+        :param reservation_project_id: Commitment project
+        """
+        parent = f"projects/{reservation_project_id}/locations/{self.location}"
+        try:
+            assignments = self.list_assignments(f"{parent}/reservations/-")
+            assignments_updated = []
+            reservations = set()
+            commitments = self.list_capacity_commitments(parent)
+
+            for assignment in assignments:
+                if assignment.assignee == f"projects/{project_id}":
+                    reservations.add(assignment.name.split("/assignments")[0])
+                    self.delete_assignment(name=assignment.name)
+                else:
+                    assignments_updated.append(assignment)
+
+            for reservation in reservations:
+                assert all(
+                    [
+                        False
+                        if reservation == assignment.name.split("/assignments")[0]
+                        else True
+                        for assignment in assignments_updated
+                    ]
+                ), "Reservation is in use. We cannot delete it."
+                self.delete_reservation(name=reservation)
+
+            for commitment in commitments:
+                if f"airflow_{project_id}_assignement" in commitment.name:
+                    self.delete_capacity_commitment(name=commitment.name)
+
+        except Exception as e:
+            self.log.error(e)
+            raise AirflowException(
+                f"Failed to delete commitments in {parent} for project assignee {project_id}."
+            )

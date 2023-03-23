@@ -988,3 +988,68 @@ class TestBigQueryReservationHook:
                 project_id=PROJECT_ID,
                 location=LOCATION,
             )
+
+    @mock.patch.object(
+        BigQueryReservationServiceHook,
+        "list_capacity_commitments",
+        return_value=[
+            CapacityCommitment(name=f"airflow_{PROJECT_ID}_assignement"),
+            CapacityCommitment(name=f"airflow_nope_assignement"),
+        ],
+    )
+    @mock.patch.object(
+        BigQueryReservationServiceHook,
+        "list_assignments",
+        return_value=[
+            Assignment(name="r1/assignments/a1", assignee=f"projects/{PROJECT_ID}"),
+            Assignment(name="r4/assignments/a2", assignee="projects/noop"),
+            Assignment(name="r2/assignments/a3"),
+            Assignment(name="r3/assignments/a4"),
+        ],
+    )
+    @mock.patch.object(
+        BigQueryReservationServiceHook,
+        "delete_capacity_commitment",
+    )
+    @mock.patch.object(
+        BigQueryReservationServiceHook,
+        "delete_reservation",
+    )
+    @mock.patch.object(
+        BigQueryReservationServiceHook,
+        "delete_assignment",
+    )
+    def test_delete_commitments_assignment_associated_success(
+        self,
+        delete_assignment_mock,
+        delete_reservation_mock,
+        delete_capacity_commitment_mock,
+        list_assignments_mock,
+        list_capacity_commitments_mock,
+    ):
+        self.hook.delete_commitments_assignment_associated(
+            project_id=PROJECT_ID,
+            location=LOCATION,
+            reservation_project_id=PROJECT_ID,
+        )
+
+        delete_assignment_mock.assert_called_once_with(name="r1/assignments/a1")
+
+        delete_reservation_mock.assert_called_once_with(name="r1")
+
+        delete_capacity_commitment_mock.assert_called_once_with(
+            name=f"airflow_{PROJECT_ID}_assignement"
+        )
+
+    @mock.patch.object(
+        ReservationServiceClient,
+        "list_assignments",
+        side_effect=Exception("Test"),
+    )
+    def test_delete_commitments_assignment_associated_failure(self, call_failure):
+        with pytest.raises(AirflowException):
+            self.hook.delete_commitments_assignment_associated(
+                project_id=PROJECT_ID,
+                location=LOCATION,
+                reservation_project_id=PROJECT_ID,
+            )

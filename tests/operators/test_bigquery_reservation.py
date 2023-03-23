@@ -169,11 +169,11 @@ class TestBigQueryReservationDeleteOperator:
     )
     @mock.patch(
         "airflow_provider_bigquery_reservation.hooks."
-        + "bigquery_reservation.BigQueryReservationServiceHook.delete_all_commitments"
+        + "bigquery_reservation.BigQueryReservationServiceHook.delete_commitments_assignment_associated"
     )
     def test_execute_with_project(
         self,
-        delete_all_commitments_mock,
+        delete_commitments_assignment_associated_mock,
         client_mock,
         get_conn_mock,
     ):
@@ -185,9 +185,10 @@ class TestBigQueryReservationDeleteOperator:
 
         operator.execute(None)
 
-        delete_all_commitments_mock.assert_called_once_with(
+        delete_commitments_assignment_associated_mock.assert_called_once_with(
             project_id=PROJECT_ID,
             location=LOCATION,
+            reservation_project_id=PROJECT_ID,
         )
 
 

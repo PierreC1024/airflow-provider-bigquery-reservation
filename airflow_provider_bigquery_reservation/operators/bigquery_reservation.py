@@ -213,17 +213,21 @@ class BigQueryReservationDeleteOperator(BaseOperator):
                 slots=self.slots_provisioning,
             )
         else:
+            reservation_project_id = self.reservation_project_id or self.project_id
+            self.log.info(
+                f"The reservation deleted is on the GCP project: {reservation_project_id}"
+            )
             assert (
-                self.project_id
+                self.project_id and reservation_project_id
             ), "Need to define `project_id` i.e. the project owns the commitments."
             self.log.info(
                 "Delete all reservations on"
-                f" projects/{self.project_id}/locations/{self.location}"
+                f" projects/{self.reservation_project_id}/locations/{self.location}"
             )
-            # ToDo: Add project_reservation
-            hook.delete_all_commitments(
+            hook.delete_commitments_assignment_associated(
                 project_id=self.project_id,
                 location=self.location,
+                reservation_project_id=reservation_project_id,
             )
 
 
