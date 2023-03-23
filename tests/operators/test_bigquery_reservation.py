@@ -43,11 +43,6 @@ class TestBigQueryReservationCreateOperator:
     @mock.patch("airflow.models.connection.Connection.get_connection_from_secrets")
     @mock.patch.object(
         BigQueryReservationServiceHook,
-        "generate_resource_id",
-        return_value=RESOURCE_ID,
-    )
-    @mock.patch.object(
-        BigQueryReservationServiceHook,
         "create_commitment_reservation_and_assignment",
     )
     @mock.patch.object(
@@ -76,24 +71,17 @@ class TestBigQueryReservationCreateOperator:
         reservation_mock,
         commitment_mock,
         create_commitment_reservation_and_assignment_mock,
-        generate_resource_id_mock,
         get_conn_mock,
     ):
         ti = mock.MagicMock()
         self.operator.execute({"ti": ti, "logical_date": LOGICAL_DATE})
 
-        generate_resource_id_mock.assert_called_once_with(
-            dag_id=DAG,
-            task_id=TASK_ID,
-            logical_date=LOGICAL_DATE,
-        )
-
         create_commitment_reservation_and_assignment_mock.assert_called_once_with(
-            resource_id=RESOURCE_ID,
             slots=SLOTS,
             assignment_job_type=JOB_TYPE,
             commitments_duration=COMMITMENTS_DURATION,
             project_id=PROJECT_ID,
+            reservation_project_id=None,
         )
 
         ti.xcom_push.assert_has_calls(
@@ -181,11 +169,11 @@ class TestBigQueryReservationDeleteOperator:
     )
     @mock.patch(
         "airflow_provider_bigquery_reservation.hooks."
-        + "bigquery_reservation.BigQueryReservationServiceHook.delete_all_commitments"
+        + "bigquery_reservation.BigQueryReservationServiceHook.delete_commitments_assignment_associated"
     )
     def test_execute_with_project(
         self,
-        delete_all_commitments_mock,
+        delete_commitments_assignment_associated_mock,
         client_mock,
         get_conn_mock,
     ):
@@ -197,9 +185,10 @@ class TestBigQueryReservationDeleteOperator:
 
         operator.execute(None)
 
-        delete_all_commitments_mock.assert_called_once_with(
+        delete_commitments_assignment_associated_mock.assert_called_once_with(
             project_id=PROJECT_ID,
             location=LOCATION,
+            reservation_project_id=PROJECT_ID,
         )
 
 

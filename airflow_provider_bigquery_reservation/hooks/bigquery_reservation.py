@@ -103,12 +103,7 @@ class BigQueryReservationServiceHook(GoogleBaseHook):
         """
         return value * 1073741824
 
-    def generate_resource_id(
-        self,
-        dag_id: str,
-        task_id: str,
-        logical_date: datetime.datetime,
-    ) -> str:
+    def format_resource_id(self, resource_id: str) -> str:
         """
         Generate a unique resource id matching google reservation requirements.
 
@@ -118,18 +113,14 @@ class BigQueryReservationServiceHook(GoogleBaseHook):
             - begins by a letter
             - not finish by a dash
 
-        :param dag_id: Airflow DAG id
-        :param task_id: Airflow task id
-        :param logical_date: Logical execution date
+        :param resource_id: input resource_id
 
         :return: a resource id
         """
-        uniqueness_suffix = hashlib.md5(str(uuid.uuid4()).encode()).hexdigest()[:5]
-        exec_date = logical_date.isoformat()
-        resource_id = f"airflow__{dag_id}_{task_id}__{exec_date}"
+        uniqueness_suffix = hashlib.md5(str(uuid.uuid4()).encode()).hexdigest()[:10]
         resource_id = (
             re.sub(r"[:\_+.]", "-", resource_id.lower())[:59]
-            + f"-{uniqueness_suffix[:4]}"
+            + f"-{uniqueness_suffix[:10]}"
         )
 
         return resource_id
@@ -139,6 +130,7 @@ class BigQueryReservationServiceHook(GoogleBaseHook):
         parent: str,
         slots: int,
         commitments_duration: str,
+        name: str,
     ) -> CapacityCommitment:
         """
         Create capacity commitment.
@@ -146,15 +138,19 @@ class BigQueryReservationServiceHook(GoogleBaseHook):
         :param parent: Parent resource name e.g. `projects/myproject/locations/US`
         :param slots: Slots number
         :param commitments_duration: Commitment minimum durations (FLEX, MONTH, YEAR).
+        :param name: capacity commitment name
         """
         client = self.get_client()
 
         try:
             self.commitment = client.create_capacity_commitment(
-                parent=parent,
-                capacity_commitment=CapacityCommitment(
-                    plan=commitments_duration, slot_count=slots
-                ),
+                request={
+                    "parent": parent,
+                    "capacity_commitment": CapacityCommitment(
+                        plan=commitments_duration, slot_count=slots
+                    ),
+                    "capacity_commitment_id": name,
+                }
             )
             return self.commitment
 
@@ -492,11 +488,11 @@ class BigQueryReservationServiceHook(GoogleBaseHook):
     @GoogleBaseHook.fallback_to_default_project_id
     def create_commitment_reservation_and_assignment(
         self,
-        resource_id: str,
         slots: int,
         assignment_job_type: str,
         commitments_duration: str,
         project_id: str = PROVIDE_PROJECT_ID,
+        reservation_project_id: str | None = None,
     ) -> None:
         """
         Create a commitment for a specific amount of slots.
@@ -506,18 +502,26 @@ class BigQueryReservationServiceHook(GoogleBaseHook):
         Wait the assignment has been attached to a query.
         See https://cloud.google.com/bigquery/docs/reservations-assignments
 
-        :param resource_id: Resource id
         :param slots: Slots number to purchase and assign
         :param assignment_job_type: Type of job for assignment
         :param commitments_duration: Commitment minimum durations (FLEX, MONTH, YEAR).
         :param project_id: GCP project where you wich to assign slots
         """
+        reservation_project_id = reservation_project_id or project_id
+        self.log.info(
+            f"The reservation will be on the GCP project: {reservation_project_id}"
+        )
+
         self._verify_slots_conditions(slots=slots)
-        parent = f"projects/{project_id}/locations/{self.location}"
+        parent = f"projects/{reservation_project_id}/locations/{self.location}"
+        resource_name = self.format_resource_id(f"airflow_{project_id}_assignement")
 
         try:
             capacity_commitment = self.create_capacity_commitment(
-                parent=parent, slots=slots, commitments_duration=commitments_duration
+                parent=parent,
+                slots=slots,
+                commitments_duration=commitments_duration,
+                name=resource_name,
             )
 
             # Cannot create multiple assignments to the same project on the same job_type.
@@ -536,7 +540,7 @@ class BigQueryReservationServiceHook(GoogleBaseHook):
                 )
             else:
                 reservation = self.create_reservation(
-                    parent=parent, reservation_id=resource_id, slots=slots
+                    parent=parent, reservation_id=resource_name, slots=slots
                 )
                 assignment = self.create_assignment(
                     parent=reservation.name,
@@ -658,4 +662,49 @@ class BigQueryReservationServiceHook(GoogleBaseHook):
 
         except Exception as e:
             self.log.error(e)
-            raise AirflowException("Failed to delete commitments in {parent}")
+            raise AirflowException(f"Failed to delete commitments in {parent}")
+
+    def delete_commitments_assignment_associated(
+        self, project_id: str, location: str, reservation_project_id: str
+    ) -> None:
+        """
+        Delete all commitments, reservation and assignment associated to a specific project assignment.
+
+        :param project_id: Reservation project assignation
+        :param location: Commitment location
+        :param reservation_project_id: Commitment project
+        """
+        parent = f"projects/{reservation_project_id}/locations/{self.location}"
+        try:
+            assignments = self.list_assignments(f"{parent}/reservations/-")
+            assignments_updated = []
+            reservations = set()
+            commitments = self.list_capacity_commitments(parent)
+
+            for assignment in assignments:
+                if assignment.assignee == f"projects/{project_id}":
+                    reservations.add(assignment.name.split("/assignments")[0])
+                    self.delete_assignment(name=assignment.name)
+                else:
+                    assignments_updated.append(assignment)
+
+            for reservation in reservations:
+                assert all(
+                    [
+                        False
+                        if reservation == assignment.name.split("/assignments")[0]
+                        else True
+                        for assignment in assignments_updated
+                    ]
+                ), "Reservation is in use. We cannot delete it."
+                self.delete_reservation(name=reservation)
+
+            for commitment in commitments:
+                if f"airflow_{project_id}_assignement" in commitment.name:
+                    self.delete_capacity_commitment(name=commitment.name)
+
+        except Exception as e:
+            self.log.error(e)
+            raise AirflowException(
+                f"Failed to delete commitments in {parent} for project assignee {project_id}."
+            )
