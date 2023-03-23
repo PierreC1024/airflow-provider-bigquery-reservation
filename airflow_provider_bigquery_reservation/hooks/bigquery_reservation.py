@@ -509,7 +509,7 @@ class BigQueryReservationServiceHook(GoogleBaseHook):
         """
         reservation_project_id = reservation_project_id or project_id
         self.log.info(
-            f"The reservation will be take on the GCP project: {reservation_project_id}"
+            f"The reservation will be on the GCP project: {reservation_project_id}"
         )
 
         self._verify_slots_conditions(slots=slots)
