@@ -85,7 +85,7 @@ class TestBigQueryReservationHook:
         uuid, "uuid4", return_value="e39dfcb7-dc5f-498d-8a89-5a871e9c4363"
     )
     def test_format_resource_id(self, uuid_mock):
-        expected = f"{RESOURCE_ID}-3bfe"
+        expected = f"{RESOURCE_ID}-3bfeba510c"
         assert (
             self.hook.format_resource_id(
                 RESOURCE_ID,

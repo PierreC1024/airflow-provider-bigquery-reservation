@@ -117,10 +117,10 @@ class BigQueryReservationServiceHook(GoogleBaseHook):
 
         :return: a resource id
         """
-        uniqueness_suffix = hashlib.md5(str(uuid.uuid4()).encode()).hexdigest()[:5]
+        uniqueness_suffix = hashlib.md5(str(uuid.uuid4()).encode()).hexdigest()[:10]
         resource_id = (
             re.sub(r"[:\_+.]", "-", resource_id.lower())[:59]
-            + f"-{uniqueness_suffix[:4]}"
+            + f"-{uniqueness_suffix[:10]}"
         )
 
         return resource_id
