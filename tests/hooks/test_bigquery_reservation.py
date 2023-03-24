@@ -993,8 +993,8 @@ class TestBigQueryReservationHook:
         BigQueryReservationServiceHook,
         "list_capacity_commitments",
         return_value=[
-            CapacityCommitment(name=f"airflow_{PROJECT_ID}_assignement"),
-            CapacityCommitment(name=f"airflow_nope_assignement"),
+            CapacityCommitment(name=f"airflow-{PROJECT_ID}-assignement"),
+            CapacityCommitment(name=f"airflow-nope-assignement"),
         ],
     )
     @mock.patch.object(
@@ -1038,7 +1038,7 @@ class TestBigQueryReservationHook:
         delete_reservation_mock.assert_called_once_with(name="r1")
 
         delete_capacity_commitment_mock.assert_called_once_with(
-            name=f"airflow_{PROJECT_ID}_assignement"
+            name=f"airflow-{PROJECT_ID}-assignement"
         )
 
     @mock.patch.object(
