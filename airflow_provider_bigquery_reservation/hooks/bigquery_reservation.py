@@ -548,14 +548,14 @@ class BigQueryReservationServiceHook(GoogleBaseHook):
                     job_type=assignment_job_type,
                 )
 
-                # Waiting the assignment attachment to send a dummy query every 15 seconds
-                self.log.info("Waiting assignments attachment")
+            # Waiting the assignment attachment to send a dummy query every 15 seconds
+            self.log.info("Waiting assignments attachment")
 
-                bq_client = self.get_bq_client()
-                while not self._is_assignment_attached_in_query(
-                    client=bq_client, project_id=project_id, location=self.location
-                ):
-                    sleep(15)  # pragma: no cover
+            bq_client = self.get_bq_client()
+            while not self._is_assignment_attached_in_query(
+                client=bq_client, project_id=project_id, location=self.location
+            ):
+                sleep(15)  # pragma: no cover
 
         except Exception as e:
             self.log.error(e)
