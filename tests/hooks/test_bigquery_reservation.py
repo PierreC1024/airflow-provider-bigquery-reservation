@@ -635,12 +635,20 @@ class TestBigQueryReservationHook:
         return_value=Reservation(name=RESOURCE_NAME, slot_capacity=SLOTS),
     )
     @mock.patch.object(BigQueryReservationServiceHook, "update_reservation")
+    @mock.patch.object(BigQueryReservationServiceHook, "get_bq_client")
+    @mock.patch.object(
+        BigQueryReservationServiceHook,
+        "_is_assignment_attached_in_query",
+        return_value=True,
+    )
     @mock.patch.object(
         BigQueryReservationServiceHook, "format_resource_id", return_value=RESOURCE_ID
     )
     def test_create_commitment_reservation_and_assignment_success_existing_assignment(
         self,
         format_resource_id,
+        _is_assignment_attached_in_query_mock,
+        bq_client_mock,
         update_reservation_mock,
         get_reservation_mock,
         search_assignment_mock,
