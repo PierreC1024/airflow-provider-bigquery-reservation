@@ -700,7 +700,7 @@ class BigQueryReservationServiceHook(GoogleBaseHook):
                 self.delete_reservation(name=reservation)
 
             for commitment in commitments:
-                if f"airflow_{project_id}_assignement" in commitment.name:
+                if f"airflow-{project_id}-assignement" in commitment.name:
                     self.delete_capacity_commitment(name=commitment.name)
 
         except Exception as e:
